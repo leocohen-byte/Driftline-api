@@ -6,11 +6,7 @@ import time
 from datetime import datetime
 import os
 
-app = FastAPI(
-title=“Driftline API”,
-description=“Early scammer detection for online marketplaces”,
-version=“1.0.0”
-)
+app = FastAPI()
 
 app.add_middleware(
 CORSMiddleware,
@@ -33,16 +29,6 @@ is_new_conversation: Optional[bool] = False
 
 class BulkEvents(BaseModel):
 events: List[MessageEvent]
-
-class ScoreResponse(BaseModel):
-user_id: str
-risk_score: int
-risk_level: str
-flags: List[str]
-recommendation: str
-analyzed_at: str
-total_messages: Optional[int] = 0
-platform: Optional[str] = “”
 
 def compute_risk_score(user_id: str) -> dict:
 events = events_store.get(user_id, [])
@@ -114,7 +100,7 @@ elif score >= 55:
     recommendation = "Limit messaging and send verification request"
 elif score >= 35:
     level = "medium"
-    recommendation = "Monitor closely - flag for review"
+    recommendation = "Monitor closely"
 else:
     level = "low"
     recommendation = "No action required"
