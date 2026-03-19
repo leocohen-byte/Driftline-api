@@ -1,207 +1,84 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional
-import time
+import time, os, random
 from datetime import datetime
-import os
 
 app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=[”*”], allow_methods=[”*”], allow_headers=[”*”])
 
-app.add_middleware(
-CORSMiddleware,
-allow_origins=[”*”],
-allow_methods=[”*”],
-allow_headers=[”*”],
-)
+events = {}
+scores = {}
+flagged = []
 
-events_store = {}
-scores_store = {}
-flagged_accounts = []
-
-class MessageEvent(BaseModel):
-user_id: str
-platform: str
-timestamp: Optional[float] = None
-conversation_id: str
-message_length: Optional[int] = None
-is_new_conversation: Optional[bool] = False
-
-def compute_risk_score(user_id):
-events = events_store.get(user_id, [])
-if not events:
-return {“score”: 0, “flags”: [], “level”: “low”, “recommendation”: “No action required”}
-
-```
+def risk(uid):
+ev = events.get(uid, [])
+if not ev: return 0, [], “low”, “No action required”
 now = time.time()
-recent = [e for e in events if now - e["timestamp"] < 3600]
-flags = []
-score = 0
+recent = [e for e in ev if now - e[“ts”] < 3600]
+s = 0
+f = []
+mc = len(recent)
+if mc > 30:
+f.append(“Sent “ + str(mc) + “ messages in 1 hour”)
+s += 35
+elif mc > 15:
+f.append(“High volume: “ + str(mc) + “ msg/hr”)
+s += 18
+uc = len(set(e[“cid”] for e in recent))
+if uc > 20:
+f.append(“Opened “ + str(uc) + “ conversations”)
+s += 30
+elif uc > 10:
+f.append(“High conversation count: “ + str(uc))
+s += 15
+s = min(s, 99)
+if s >= 75: return s, f, “critical”, “Suspend account”
+elif s >= 55: return s, f, “high”, “Limit messaging”
+elif s >= 35: return s, f, “medium”, “Monitor closely”
+return s, f, “low”, “No action required”
 
-msg_count = len(recent)
-if msg_count > 30:
-    flags.append("Sent " + str(msg_count) + " messages in the last hour")
-    score += 35
-elif msg_count > 15:
-    flags.append("High message volume: " + str(msg_count) + " messages/hour")
-    score += 18
+def seed():
+users = [(“scammer_001”,45,True),(“scammer_002”,38,True),(“scammer_003”,52,True),(“user_004”,12,False)]
+now = time.time()
+for uid, mc, bad in users:
+events[uid] = []
+bt = now - random.randint(1800,7200)
+cvs = [“c”+str(random.randint(1000,9999)) for _ in range(15)]
+for _ in range(mc):
+bt += random.uniform(0.5,3) if bad else random.uniform(30,300)
+events[uid].append({“ts”:bt,“cid”:random.choice(cvs),“platform”:“driftline”})
+sc,fl,lv,rc = risk(uid)
+d = {“user_id”:uid,“platform”:“driftline”,“risk_score”:sc,“risk_level”:lv,“flags”:fl,“recommendation”:rc,“analyzed_at”:datetime.utcnow().isoformat(),“total_messages”:mc}
+scores[uid] = d
+if sc >= 35: flagged.append(d)
 
-unique_convos = len(set(e["conversation_id"] for e in recent))
-if unique_convos > 20:
-    flags.append("Opened " + str(unique_convos) + " simultaneous conversations")
-    score += 30
-elif unique_convos > 10:
-    flags.append("Unusually high conversation count: " + str(unique_convos))
-    score += 15
-
-score = min(score, 99)
-
-if score >= 75:
-    level = "critical"
-    recommendation = "Suspend account pending manual review"
-elif score >= 55:
-    level = "high"
-    recommendation = "Limit messaging and send verification request"
-elif score >= 35:
-    level = "medium"
-    recommendation = "Monitor closely"
-else:
-    level = "low"
-    recommendation = "No action required"
-
-return {"score": score, "flags": flags, "level": level, "recommendation": recommendation}
-```
+seed()
 
 @app.get(”/”)
-def root():
-return {“product”: “Driftline”, “version”: “1.0.0”, “status”: “operational”}
+def root(): return {“product”:“Driftline”,“version”:“2.0.0”,“status”:“operational”}
 
 @app.get(”/health”)
-def health():
-return {“status”: “ok”, “timestamp”: datetime.utcnow().isoformat()}
-
-@app.post(”/event”)
-def ingest_event(event: MessageEvent):
-ts = event.timestamp or time.time()
-if event.user_id not in events_store:
-events_store[event.user_id] = []
-events_store[event.user_id].append({
-“timestamp”: ts,
-“conversation_id”: event.conversation_id,
-“platform”: event.platform,
-“message_length”: event.message_length,
-“is_new_conversation”: event.is_new_conversation,
-})
-result = compute_risk_score(event.user_id)
-score_data = {
-“user_id”: event.user_id,
-“platform”: event.platform,
-“risk_score”: result[“score”],
-“risk_level”: result[“level”],
-“flags”: result[“flags”],
-“recommendation”: result[“recommendation”],
-“analyzed_at”: datetime.utcnow().isoformat(),
-“total_messages”: len(events_store[event.user_id]),
-}
-scores_store[event.user_id] = score_data
-if result[“score”] >= 35:
-existing = next((a for a in flagged_accounts if a[“user_id”] == event.user_id), None)
-if existing:
-existing.update(score_data)
-else:
-flagged_accounts.insert(0, score_data)
-if len(flagged_accounts) > 100:
-flagged_accounts.pop()
-return score_data
+def health(): return {“status”:“ok”,“timestamp”:datetime.utcnow().isoformat()}
 
 @app.get(”/flagged”)
-def get_flagged(platform: Optional[str] = None, level: Optional[str] = None, limit: int = 50):
-accounts = flagged_accounts.copy()
-if platform:
-accounts = [a for a in accounts if a.get(“platform”) == platform]
-if level:
-accounts = [a for a in accounts if a.get(“risk_level”) == level]
-return {
-“total”: len(accounts),
-“accounts”: accounts[:limit],
-“critical”: len([a for a in accounts if a[“risk_level”] == “critical”]),
-“high”: len([a for a in accounts if a[“risk_level”] == “high”]),
-“medium”: len([a for a in accounts if a[“risk_level”] == “medium”]),
-}
+def get_flagged(platform: str = None, level: str = None, limit: int = 50):
+acc = flagged.copy()
+if platform: acc = [a for a in acc if a.get(“platform”) == platform]
+if level: acc = [a for a in acc if a.get(“risk_level”) == level]
+return {“total”:len(acc),“accounts”:acc[:limit],“critical”:len([a for a in acc if a[“risk_level”]==“critical”]),“high”:len([a for a in acc if a[“risk_level”]==“high”]),“medium”:len([a for a in acc if a[“risk_level”]==“medium”])}
+
+@app.get(”/stats”)
+def get_stats(): return {“total_scanned”:len(scores),“total_flagged”:len(flagged),“critical”:len([a for a in flagged if a[“risk_level”]==“critical”]),“high”:len([a for a in flagged if a[“risk_level”]==“high”]),“medium”:len([a for a in flagged if a[“risk_level”]==“medium”]),“flag_rate”:round(len(flagged)/max(len(scores),1)*100,1)}
 
 @app.get(”/score/{user_id}”)
 def get_score(user_id: str):
-if user_id not in scores_store:
-raise HTTPException(status_code=404, detail=“User not found”)
-return scores_store[user_id]
+if user_id not in scores: raise HTTPException(404, “User not found”)
+return scores[user_id]
 
 @app.delete(”/account/{user_id}”)
 def clear_account(user_id: str, action: str = “reviewed”):
-global flagged_accounts
-flagged_accounts = [a for a in flagged_accounts if a[“user_id”] != user_id]
-if user_id in scores_store:
-scores_store[user_id][“status”] = action
-if user_id in events_store:
-del events_store[user_id]
-return {“user_id”: user_id, “action”: action, “status”: “success”}
-
-@app.get(”/stats”)
-def get_stats(platform: Optional[str] = None):
-accounts = flagged_accounts
-if platform:
-accounts = [a for a in accounts if a.get(“platform”) == platform]
-total_scanned = len(scores_store)
-return {
-“total_scanned”: total_scanned,
-“total_flagged”: len(accounts),
-“critical”: len([a for a in accounts if a[“risk_level”] == “critical”]),
-“high”: len([a for a in accounts if a[“risk_level”] == “high”]),
-“medium”: len([a for a in accounts if a[“risk_level”] == “medium”]),
-“flag_rate”: round(len(accounts) / max(total_scanned, 1) * 100, 1),
-}
-
-def seed_demo_data():
-import random
-demo_users = [
-(“scammer_001”, 45, True),
-(“scammer_002”, 38, True),
-(“scammer_003”, 52, True),
-(“suspicious_004”, 22, False),
-(“suspicious_005”, 18, False),
-]
-now = time.time()
-for user_id, msg_count, is_scammer in demo_users:
-events_store[user_id] = []
-base_time = now - random.randint(1800, 7200)
-convos = [“conv_” + str(random.randint(1000, 9999)) for _ in range(random.randint(10, 30))]
-for i in range(msg_count):
-gap = random.uniform(0.5, 3) if is_scammer else random.uniform(30, 300)
-base_time += gap
-events_store[user_id].append({
-“timestamp”: base_time,
-“conversation_id”: random.choice(convos),
-“platform”: “bark”,
-“message_length”: random.randint(20, 200),
-“is_new_conversation”: random.random() < 0.3,
-})
-result = compute_risk_score(user_id)
-score_data = {
-“user_id”: user_id,
-“platform”: “bark”,
-“risk_score”: result[“score”],
-“risk_level”: result[“level”],
-“flags”: result[“flags”],
-“recommendation”: result[“recommendation”],
-“analyzed_at”: datetime.utcnow().isoformat(),
-“total_messages”: msg_count,
-}
-scores_store[user_id] = score_data
-if result[“score”] >= 35:
-flagged_accounts.append(score_data)
-
-seed_demo_data()
-
-if **name** == “**main**”:
-import uvicorn
-port = int(os.environ.get(“PORT”, 8000))
-uvicorn.run(app, host=“0.0.0.0”, port=port)
+global flagged
+flagged = [a for a in flagged if a[“user_id”] != user_id]
+if user_id in scores: scores[user_id][“status”] = action
+if user_id in events: del events[user_id]
+return {“user_id”:user_id,“action”:action,“status”:“success”}
