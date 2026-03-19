@@ -20,12 +20,12 @@ scores_store = {}
 flagged_accounts = []
 
 class MessageEvent(BaseModel):
-user_id: str
-platform: str
-timestamp: Optional[float] = None
-conversation_id: str
-message_length: Optional[int] = None
-is_new_conversation: Optional[bool] = False
+    user_id: str
+    platform: str
+    timestamp: Optional[float] = None
+    conversation_id: str
+    message_length: Optional[int] = None
+    is_new_conversation: Optional[bool] = False
 
 class BulkEvents(BaseModel):
 events: List[MessageEvent]
