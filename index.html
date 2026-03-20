@@ -211,11 +211,11 @@ async function loadData() {
     document.getElementById('api-status').textContent = 'live';
     document.getElementById('total-scanned').textContent = stats.total_scanned || 0;
     document.getElementById('total-flagged').textContent = stats.total_flagged || 0;
-    document.getElementById('total-critical').textContent = flagged.critical || 0;
+    const criticalCount = (flagged.results || []).filter(a => a.risk_level === 'critical').length; document.getElementById('total-critical').textContent = criticalCount;
     document.getElementById('flag-rate').textContent = (stats.flag_rate_percent || stats.flag_rate || 0) + '%';
 
-    const accounts = flagged.flagged_accounts || flagged.accounts || [];
-    document.getElementById('account-count').textContent = accounts.length + ' accounts';
+    const accounts = flagged.results || flagged.flagged_accounts || flagged.accounts || [];
+    document.getElementById('account-count').textContent = accounts.length + ' accounts'; document.getElementById('total-flagged').textContent = flagged.total_flagged || accounts.length;
 
     if (accounts.length === 0) {
       document.getElementById('accounts-list').innerHTML = '<div class="loading">No flagged accounts</div>';
@@ -227,7 +227,7 @@ async function loadData() {
       const color = getRiskColor(level);
       const score = a.risk_score || 0;
       const initial = (a.user_id || 'U')[0].toUpperCase();
-      const reason = a.reason || (Array.isArray(a.flags) ? a.flags[0] : a.flags) || a.recommendation || 'Suspicious behavior detected';
+      const reason = a.flag_reason || a.reason || (Array.isArray(a.flags) ? a.flags[0] : a.flags) || a.recommendation || 'Suspicious behavior detected';
       return `
         <div class="account-card" style="animation-delay:${i*0.05}s">
           <div class="account-left">
