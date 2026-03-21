@@ -220,6 +220,19 @@ def root():
 def health():
     return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
 
+
+@app.get("/debug-db")
+def debug_db():
+    import os
+    db_url = os.environ.get("DATABASE_URL", "NOT SET")
+    # Mask password for security
+    if db_url and "@" in db_url:
+        parts = db_url.split("@")
+        masked = parts[0].split(":")[0] + ":****@" + parts[1]
+    else:
+        masked = db_url
+    return {"DATABASE_URL": masked, "set": db_url != "NOT SET"}
+
 @app.post("/register")
 def register(email: str = Query(...), password: str = Query(...), marketplace: str = Query(...)):
     if len(password) < 8:
