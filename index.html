@@ -3,185 +3,1185 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Driftline — Trust & Safety Intelligence</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<title>Driftline — Marketplace Fraud Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Clash+Display:wght@400;500;600;700&family=Cabinet+Grotesk:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0a0a0f;
-    --surface: #111118;
-    --border: #1e1e2e;
-    --accent: #00e5ff;
-    --accent2: #ff3c6e;
-    --accent3: #7b61ff;
-    --text: #e8e8f0;
-    --muted: #6b6b80;
-    --critical: #ff3c6e;
-    --high: #ff8c42;
-    --medium: #ffd166;
-    --low: #06d6a0;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-  body::before {
-    content: '';
-    position: fixed;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(ellipse at 30% 20%, rgba(0,229,255,0.03) 0%, transparent 50%),
-                radial-gradient(ellipse at 70% 80%, rgba(123,97,255,0.04) 0%, transparent 50%);
-    pointer-events: none;
-    z-index: 0;
-  }
-  .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 24px 40px;
-    border-bottom: 1px solid var(--border);
-    position: relative;
-    z-index: 10;
-  }
-  .logo { display: flex; align-items: center; gap: 12px; }
-  .logo-mark {
-    width: 36px; height: 36px;
-    background: linear-gradient(135deg, var(--accent), var(--accent3));
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-  }
-  .logo-text { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
-  .logo-text span { color: var(--accent); }
-  .header-right { display: flex; align-items: center; gap: 16px; }
-  .status-pill {
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px 14px;
-    background: rgba(6,214,160,0.1);
-    border: 1px solid rgba(6,214,160,0.2);
-    border-radius: 100px;
-    font-family: 'DM Mono', monospace;
-    font-size: 12px;
-    color: var(--low);
-  }
-  .status-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: var(--low);
-    animation: pulse 2s infinite;
-  }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-  .refresh-btn {
-    background: none; border: 1px solid var(--border);
-    color: var(--muted); padding: 8px 16px; border-radius: 8px;
-    cursor: pointer; font-family: 'DM Mono', monospace; font-size: 12px;
-    transition: all 0.2s;
-  }
-  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .container { max-width: 1200px; margin: 0 auto; padding: 40px; position: relative; z-index: 1; }
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 40px; }
-  .stat-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 16px; padding: 24px; position: relative; overflow: hidden;
-    transition: border-color 0.2s;
-  }
-  .stat-card:hover { border-color: rgba(0,229,255,0.2); }
-  .stat-card::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent-color, var(--accent)), transparent);
-  }
-  .stat-label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; font-family: 'DM Mono', monospace; }
-  .stat-value { font-size: 36px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
-  .stat-sub { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
-  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .section-title { font-size: 18px; font-weight: 700; }
-  .section-count { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); background: var(--surface); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; }
-  .accounts-list { display: flex; flex-direction: column; gap: 12px; }
-  .account-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; padding: 20px 24px;
-    display: flex; align-items: center; justify-content: space-between;
-    transition: all 0.2s; animation: slideIn 0.4s ease both;
-  }
-  .account-card:hover { border-color: rgba(0,229,255,0.15); transform: translateX(4px); }
-  @keyframes slideIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
-  .account-left { display: flex; align-items: center; gap: 16px; }
-  .account-avatar { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 800; flex-shrink: 0; }
-  .account-id { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
-  .account-reason { font-size: 12px; color: var(--muted); }
-  .account-right { display: flex; align-items: center; gap: 16px; }
-  .risk-score { text-align: right; }
-  .risk-number { font-size: 28px; font-weight: 800; line-height: 1; font-family: 'DM Mono', monospace; }
-  .risk-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-family: 'DM Mono', monospace; }
-  .badge { padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; font-family: 'DM Mono', monospace; }
-  .badge-critical { background: rgba(255,60,110,0.15); color: var(--critical); border: 1px solid rgba(255,60,110,0.2); }
-  .badge-high { background: rgba(255,140,66,0.15); color: var(--high); border: 1px solid rgba(255,140,66,0.2); }
-  .badge-medium { background: rgba(255,209,102,0.15); color: var(--medium); border: 1px solid rgba(255,209,102,0.2); }
-  .badge-low { background: rgba(6,214,160,0.15); color: var(--low); border: 1px solid rgba(6,214,160,0.2); }
-  .loading { text-align: center; padding: 60px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 13px; }
-  .loading-spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
-  @keyframes spin { to{transform:rotate(360deg)} }
-  .error-msg { text-align: center; padding: 40px; color: var(--critical); font-family: 'DM Mono', monospace; font-size: 13px; background: rgba(255,60,110,0.05); border: 1px solid rgba(255,60,110,0.1); border-radius: 14px; }
-  @media (max-width: 768px) {
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-    .container { padding: 20px; }
-    .header { padding: 16px 20px; }
-  }
+:root {
+  --bg: #080810;
+  --surface: #0e0e1a;
+  --surface2: #13131f;
+  --border: #1a1a2e;
+  --border2: #252540;
+  --accent: #4f6ef7;
+  --accent-glow: rgba(79,110,247,0.15);
+  --accent2: #e84393;
+  --accent3: #00d4aa;
+  --text: #f0f0fa;
+  --text2: #a0a0c0;
+  --text3: #606080;
+  --critical: #ff4560;
+  --high: #ff8c42;
+  --medium: #ffd166;
+  --low: #00d4aa;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Cabinet Grotesk', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(79,110,247,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 110%, rgba(232,67,147,0.06) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* NAV */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 48px;
+  height: 64px;
+  background: rgba(8,8,16,0.8);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Clash Display', sans-serif;
+  font-size: 20px; font-weight: 600;
+  color: var(--text); text-decoration: none;
+  cursor: pointer;
+}
+.nav-logo-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px var(--accent);
+}
+.nav-links {
+  display: flex; align-items: center; gap: 32px;
+  list-style: none;
+}
+.nav-links a {
+  color: var(--text2); text-decoration: none;
+  font-size: 14px; font-weight: 500;
+  transition: color 0.2s;
+  cursor: pointer;
+}
+.nav-links a:hover { color: var(--text); }
+.nav-cta {
+  display: flex; align-items: center; gap: 12px;
+}
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border-radius: 8px;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  text-decoration: none; border: none;
+  font-family: 'Cabinet Grotesk', sans-serif;
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border2);
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--text3); }
+.btn-primary {
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 0 24px rgba(79,110,247,0.3);
+}
+.btn-primary:hover {
+  background: #6b84f8;
+  box-shadow: 0 0 32px rgba(79,110,247,0.5);
+  transform: translateY(-1px);
+}
+.btn-large {
+  padding: 14px 28px;
+  font-size: 16px;
+  border-radius: 10px;
+}
+.btn-outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border2);
+}
+.btn-outline:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* PAGES */
+.page { display: none; }
+.page.active { display: block; }
+
+/* LANDING */
+#page-home {
+  padding-top: 64px;
+}
+
+/* HERO */
+.hero {
+  min-height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 48px;
+  position: relative;
+  z-index: 1;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  background: var(--accent-glow);
+  border: 1px solid rgba(79,110,247,0.3);
+  border-radius: 100px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px; color: var(--accent);
+  margin-bottom: 32px;
+  animation: fadeUp 0.6s ease both;
+}
+.hero-badge-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(20px); }
+  to { opacity:1; transform: translateY(0); }
+}
+.hero h1 {
+  font-family: 'Clash Display', sans-serif;
+  font-size: clamp(48px, 7vw, 88px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  max-width: 900px;
+  margin-bottom: 24px;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+.hero h1 .highlight {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero p {
+  font-size: 20px;
+  color: var(--text2);
+  max-width: 560px;
+  line-height: 1.6;
+  margin-bottom: 40px;
+  animation: fadeUp 0.6s 0.2s ease both;
+}
+.hero-actions {
+  display: flex; align-items: center; gap: 16px;
+  animation: fadeUp 0.6s 0.3s ease both;
+  margin-bottom: 80px;
+}
+.hero-code {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 32px;
+  text-align: left;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  max-width: 560px;
+  width: 100%;
+  animation: fadeUp 0.6s 0.4s ease both;
+  position: relative;
+  overflow: hidden;
+}
+.hero-code::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+.code-comment { color: var(--text3); }
+.code-key { color: var(--accent); }
+.code-str { color: var(--accent3); }
+.code-num { color: var(--accent2); }
+.code-fn { color: #f8d080; }
+
+/* STATS BAR */
+.stats-bar {
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 40px 48px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  position: relative; z-index: 1;
+}
+.stat-item {
+  text-align: center;
+  padding: 0 24px;
+  border-right: 1px solid var(--border);
+}
+.stat-item:last-child { border-right: none; }
+.stat-number {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 40px; font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.stat-number span { color: var(--accent); }
+.stat-desc { font-size: 14px; color: var(--text3); }
+
+/* SECTION */
+.section {
+  padding: 100px 48px;
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative; z-index: 1;
+}
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; font-weight: 500;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+.section-title {
+  font-family: 'Clash Display', sans-serif;
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 700; letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 16px;
+}
+.section-sub {
+  font-size: 18px; color: var(--text2);
+  max-width: 560px; line-height: 1.6;
+  margin-bottom: 60px;
+}
+
+/* HOW IT WORKS */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.step-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s, transform 0.3s;
+}
+.step-card:hover {
+  border-color: var(--border2);
+  transform: translateY(-4px);
+}
+.step-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.step-card:hover::before { opacity: 1; }
+.step-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px; color: var(--accent);
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+}
+.step-icon {
+  font-size: 32px; margin-bottom: 16px;
+}
+.step-title {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 22px; font-weight: 600;
+  margin-bottom: 12px;
+}
+.step-desc { font-size: 15px; color: var(--text2); line-height: 1.6; }
+
+/* FEATURES */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px;
+  transition: all 0.3s;
+}
+.feature-card:hover {
+  border-color: var(--border2);
+  background: var(--surface2);
+}
+.feature-icon { font-size: 28px; margin-bottom: 16px; }
+.feature-title {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 20px; font-weight: 600;
+  margin-bottom: 10px;
+}
+.feature-desc { font-size: 15px; color: var(--text2); line-height: 1.6; }
+
+/* PRICING */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.pricing-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 36px;
+  position: relative;
+  transition: all 0.3s;
+}
+.pricing-card.featured {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(79,110,247,0.08), var(--surface));
+}
+.pricing-card.featured::before {
+  content: 'Most Popular';
+  position: absolute;
+  top: -12px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: white;
+  font-size: 11px; font-weight: 700;
+  padding: 4px 12px; border-radius: 100px;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.05em;
+}
+.plan-name {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px; color: var(--text3);
+  letter-spacing: 0.1em; text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.plan-price {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 48px; font-weight: 700;
+  color: var(--text); margin-bottom: 4px;
+}
+.plan-price span { font-size: 20px; color: var(--text2); }
+.plan-period { font-size: 14px; color: var(--text3); margin-bottom: 24px; }
+.plan-features { list-style: none; margin-bottom: 32px; }
+.plan-features li {
+  font-size: 14px; color: var(--text2);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.plan-features li:last-child { border-bottom: none; }
+.check { color: var(--accent3); font-size: 16px; }
+
+/* DASHBOARD PREVIEW */
+.dashboard-preview {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+}
+.preview-bar {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  display: flex; align-items: center; gap: 8px;
+}
+.preview-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+}
+.preview-url {
+  flex: 1; text-align: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px; color: var(--text3);
+}
+.preview-content { padding: 32px; }
+.preview-stats {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 16px; margin-bottom: 24px;
+}
+.preview-stat {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px; padding: 20px;
+}
+.preview-stat-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+.preview-stat-value {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 28px; font-weight: 700;
+}
+.preview-accounts { display: flex; flex-direction: column; gap: 10px; }
+.preview-account {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 20px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.preview-account-left { display: flex; align-items: center; gap: 12px; }
+.preview-avatar {
+  width: 36px; height: 36px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700;
+}
+.preview-account-id {
+  font-family: 'DM Mono', monospace; font-size: 13px;
+  margin-bottom: 2px;
+}
+.preview-account-reason { font-size: 11px; color: var(--text3); }
+.preview-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; font-weight: 700;
+  padding: 4px 10px; border-radius: 5px;
+  text-transform: uppercase;
+}
+
+/* CTA SECTION */
+.cta-section {
+  margin: 0 48px 100px;
+  background: linear-gradient(135deg, rgba(79,110,247,0.1), rgba(232,67,147,0.05));
+  border: 1px solid rgba(79,110,247,0.2);
+  border-radius: 24px;
+  padding: 80px;
+  text-align: center;
+  position: relative; z-index: 1;
+  overflow: hidden;
+}
+.cta-section::before {
+  content: '';
+  position: absolute;
+  top: -50%; left: -50%;
+  width: 200%; height: 200%;
+  background: radial-gradient(ellipse at center, rgba(79,110,247,0.06) 0%, transparent 60%);
+  pointer-events: none;
+}
+.cta-section h2 {
+  font-family: 'Clash Display', sans-serif;
+  font-size: clamp(32px, 4vw, 52px);
+  font-weight: 700; letter-spacing: -0.02em;
+  margin-bottom: 16px;
+}
+.cta-section p { font-size: 18px; color: var(--text2); margin-bottom: 36px; }
+.cta-actions { display: flex; align-items: center; justify-content: center; gap: 16px; }
+
+/* FOOTER */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 40px 48px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: relative; z-index: 1;
+}
+.footer-logo {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 16px; font-weight: 600;
+  color: var(--text2);
+}
+.footer-links { display: flex; gap: 24px; }
+.footer-links a {
+  font-size: 13px; color: var(--text3);
+  text-decoration: none; cursor: pointer;
+  transition: color 0.2s;
+}
+.footer-links a:hover { color: var(--text2); }
+.footer-copy { font-size: 13px; color: var(--text3); }
+
+/* LOGIN PAGE */
+#page-login {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 80px 24px;
+  position: relative; z-index: 1;
+}
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 48px;
+  width: 100%; max-width: 440px;
+  position: relative;
+}
+.auth-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+.auth-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Clash Display', sans-serif;
+  font-size: 22px; font-weight: 600;
+  margin-bottom: 8px;
+}
+.auth-subtitle { font-size: 14px; color: var(--text2); margin-bottom: 36px; }
+.form-group { margin-bottom: 20px; }
+.form-label {
+  display: block;
+  font-size: 13px; font-weight: 600;
+  color: var(--text2); margin-bottom: 8px;
+}
+.form-input {
+  width: 100%; padding: 12px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+  font-family: 'Cabinet Grotesk', sans-serif;
+  transition: border-color 0.2s;
+  outline: none;
+}
+.form-input:focus { border-color: var(--accent); }
+.form-input::placeholder { color: var(--text3); }
+.form-footer {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 13px; color: var(--text3);
+}
+.form-footer a { color: var(--accent); cursor: pointer; text-decoration: none; }
+.form-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 24px 0;
+}
+.form-divider::before, .form-divider::after {
+  content: ''; flex: 1; height: 1px;
+  background: var(--border);
+}
+.form-divider span { font-size: 12px; color: var(--text3); }
+.api-key-display {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px; color: var(--accent);
+  margin-top: 24px;
+  display: none;
+  word-break: break-all;
+}
+.api-key-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+
+/* DASHBOARD PAGE */
+#page-dashboard {
+  padding-top: 64px;
+  min-height: 100vh;
+}
+.dash-header {
+  padding: 32px 48px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.dash-title {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 28px; font-weight: 700;
+}
+.dash-subtitle { font-size: 14px; color: var(--text3); margin-top: 4px; }
+.status-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px;
+  background: rgba(0,212,170,0.1);
+  border: 1px solid rgba(0,212,170,0.2);
+  border-radius: 100px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px; color: var(--low);
+}
+.status-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--low); animation: pulse 2s infinite;
+}
+.dash-body { padding: 40px 48px; }
+.dash-stats {
+  display: grid; grid-template-columns: repeat(4,1fr);
+  gap: 20px; margin-bottom: 40px;
+}
+.dash-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px; padding: 24px;
+  position: relative; overflow: hidden;
+  transition: border-color 0.2s;
+}
+.dash-stat:hover { border-color: var(--border2); }
+.dash-stat::after {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--stat-color, var(--accent));
+  opacity: 0.6;
+}
+.dash-stat-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.12em;
+  margin-bottom: 12px;
+}
+.dash-stat-value {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 36px; font-weight: 700;
+  line-height: 1; margin-bottom: 4px;
+}
+.dash-stat-sub { font-size: 12px; color: var(--text3); }
+.dash-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.dash-section-title {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 20px; font-weight: 600;
+}
+.dash-count {
+  font-family: 'DM Mono', monospace; font-size: 12px;
+  color: var(--text3); background: var(--surface);
+  border: 1px solid var(--border); padding: 4px 12px;
+  border-radius: 6px;
+}
+.accounts-list { display: flex; flex-direction: column; gap: 12px; }
+.account-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 20px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  transition: all 0.2s; animation: fadeUp 0.4s ease both;
+}
+.account-card:hover { border-color: var(--border2); transform: translateX(4px); }
+.account-left { display: flex; align-items: center; gap: 16px; }
+.account-avatar {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 800; flex-shrink: 0;
+}
+.account-id {
+  font-family: 'DM Mono', monospace; font-size: 14px;
+  font-weight: 500; margin-bottom: 4px;
+}
+.account-reason { font-size: 12px; color: var(--text3); }
+.account-right { display: flex; align-items: center; gap: 16px; }
+.risk-score { text-align: right; }
+.risk-number {
+  font-size: 28px; font-weight: 800; line-height: 1;
+  font-family: 'Clash Display', sans-serif;
+}
+.risk-label {
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--text3);
+  font-family: 'DM Mono', monospace;
+}
+.badge {
+  padding: 4px 12px; border-radius: 6px;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+}
+.badge-critical { background: rgba(255,69,96,0.15); color: var(--critical); border: 1px solid rgba(255,69,96,0.2); }
+.badge-high { background: rgba(255,140,66,0.15); color: var(--high); border: 1px solid rgba(255,140,66,0.2); }
+.badge-medium { background: rgba(255,209,102,0.15); color: var(--medium); border: 1px solid rgba(255,209,102,0.2); }
+.badge-low { background: rgba(0,212,170,0.15); color: var(--low); border: 1px solid rgba(0,212,170,0.2); }
+.dash-loading {
+  text-align: center; padding: 60px;
+  color: var(--text3); font-family: 'DM Mono', monospace; font-size: 13px;
+}
+.dash-spinner {
+  width: 32px; height: 32px;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.refresh-btn {
+  background: none; border: 1px solid var(--border);
+  color: var(--text2); padding: 8px 16px; border-radius: 8px;
+  cursor: pointer; font-family: 'DM Mono', monospace; font-size: 12px;
+  transition: all 0.2s;
+}
+.refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ABOUT PAGE */
+#page-about {
+  padding-top: 64px;
+  min-height: 100vh;
+  position: relative; z-index: 1;
+}
+.about-hero {
+  padding: 100px 48px;
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto;
+}
+.about-body {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 48px 100px;
+}
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+  gap: 24px; margin-top: 60px;
+}
+.about-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px; padding: 36px;
+}
+.about-card-title {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 22px; font-weight: 600;
+  margin-bottom: 12px;
+}
+.about-card-text { font-size: 15px; color: var(--text2); line-height: 1.7; }
+.team-section { margin-top: 80px; }
+.team-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; margin-top: 40px; }
+.team-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 32px; text-align: center;
+}
+.team-avatar {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; margin: 0 auto 16px;
+}
+.team-name {
+  font-family: 'Clash Display', sans-serif;
+  font-size: 18px; font-weight: 600; margin-bottom: 4px;
+}
+.team-role { font-size: 13px; color: var(--text3); }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  nav { padding: 0 20px; }
+  .nav-links { display: none; }
+  .hero { padding: 60px 24px; }
+  .stats-bar { grid-template-columns: repeat(2,1fr); padding: 24px; }
+  .section { padding: 60px 24px; }
+  .steps { grid-template-columns: 1fr; }
+  .features-grid { grid-template-columns: 1fr; }
+  .pricing-grid { grid-template-columns: 1fr; }
+  .cta-section { margin: 0 24px 60px; padding: 48px 24px; }
+  .cta-actions { flex-direction: column; }
+  footer { flex-direction: column; gap: 16px; text-align: center; }
+  .dash-stats { grid-template-columns: repeat(2,1fr); }
+  .dash-body { padding: 24px; }
+  .about-grid { grid-template-columns: 1fr; }
+  .team-grid { grid-template-columns: 1fr; }
+  .preview-stats { grid-template-columns: repeat(2,1fr); }
+}
 </style>
 </head>
 <body>
-<header class="header">
-  <div class="logo">
-    <div class="logo-mark">⚡</div>
-    <div class="logo-text">Drift<span>line</span></div>
-  </div>
-  <div class="header-right">
-    <div class="status-pill">
-      <div class="status-dot"></div>
-      <span id="api-status">connecting...</span>
-    </div>
-    <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
-  </div>
-</header>
 
-<div class="container">
-  <div class="stats-grid">
-    <div class="stat-card" style="--accent-color: var(--accent)">
-      <div class="stat-label">Total Scanned</div>
-      <div class="stat-value" id="total-scanned">—</div>
-      <div class="stat-sub">accounts analyzed</div>
+<!-- NAV -->
+<nav>
+  <div class="nav-logo" onclick="showPage('home')">
+    <div class="nav-logo-dot"></div>
+    Driftline
+  </div>
+  <ul class="nav-links">
+    <li><a onclick="showPage('home')">Home</a></li>
+    <li><a onclick="document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">How It Works</a></li>
+    <li><a onclick="document.getElementById('pricing').scrollIntoView({behavior:'smooth'})">Pricing</a></li>
+    <li><a onclick="showPage('about')">About</a></li>
+    <li><a onclick="showPage('dashboard')">Dashboard</a></li>
+  </ul>
+  <div class="nav-cta">
+    <button class="btn btn-ghost" onclick="showPage('login')">Sign In</button>
+    <button class="btn btn-primary" onclick="showPage('login')">Get Started</button>
+  </div>
+</nav>
+
+<!-- HOME PAGE -->
+<div id="page-home" class="page active">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-badge">
+      <div class="hero-badge-dot"></div>
+      Now in Early Access — Join 12 marketplaces
     </div>
-    <div class="stat-card" style="--accent-color: var(--critical)">
-      <div class="stat-label">Flagged</div>
-      <div class="stat-value" style="color: var(--critical)" id="total-flagged">—</div>
-      <div class="stat-sub">require review</div>
+    <h1>Stop marketplace fraud <span class="highlight">before it happens</span></h1>
+    <p>Driftline analyzes messaging behavior in real time — catching scammers during the conversation stage, before any transaction is made.</p>
+    <div class="hero-actions">
+      <button class="btn btn-primary btn-large" onclick="showPage('login')">Start for free →</button>
+      <button class="btn btn-outline btn-large" onclick="showPage('dashboard')">View live demo</button>
     </div>
-    <div class="stat-card" style="--accent-color: var(--accent2)">
-      <div class="stat-label">Critical</div>
-      <div class="stat-value" style="color: var(--critical)" id="total-critical">—</div>
-      <div class="stat-sub">suspend immediately</div>
+    <div class="hero-code">
+      <div class="code-comment"># Add Driftline to your marketplace in 3 lines</div>
+      <br>
+      <span class="code-key">import</span> driftline<br>
+      <br>
+      client = driftline.<span class="code-fn">Client</span>(<span class="code-str">"your_api_key"</span>)<br>
+      result = client.<span class="code-fn">analyze</span>(user_id=<span class="code-str">"user_123"</span>, conversation_id=<span class="code-str">"conv_456"</span>)<br>
+      <br>
+      <span class="code-comment"># {"risk_score": 87, "level": "critical", "flags": ["45 msgs/hr"]}</span>
     </div>
-    <div class="stat-card" style="--accent-color: var(--accent3)">
-      <div class="stat-label">Flag Rate</div>
-      <div class="stat-value" style="color: var(--accent)" id="flag-rate">—</div>
-      <div class="stat-sub">of all accounts</div>
+  </section>
+
+  <!-- STATS BAR -->
+  <div class="stats-bar">
+    <div class="stat-item">
+      <div class="stat-number">2.3<span>M+</span></div>
+      <div class="stat-desc">Messages analyzed daily</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">99<span>%</span></div>
+      <div class="stat-desc">Accuracy rate</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">&lt;50<span>ms</span></div>
+      <div class="stat-desc">Average response time</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-number">$0</div>
+      <div class="stat-desc">User data stored</div>
     </div>
   </div>
 
-  <div class="section-header">
-    <div class="section-title">Flagged Accounts</div>
-    <span class="section-count" id="account-count">loading...</span>
+  <!-- HOW IT WORKS -->
+  <div id="how-it-works"></div>
+  <section class="section">
+    <div class="section-label">How It Works</div>
+    <div class="section-title">From integration to<br>insight in minutes</div>
+    <div class="section-sub">Driftline plugs into your existing messaging infrastructure with no data migration required.</div>
+    <div class="steps">
+      <div class="step-card">
+        <div class="step-num">01 — INTEGRATE</div>
+        <div class="step-icon">⚡</div>
+        <div class="step-title">Drop in 3 lines of code</div>
+        <div class="step-desc">Send message events to our API as they happen. No schema changes, no infrastructure work. Works with any language.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02 — DETECT</div>
+        <div class="step-icon">🧠</div>
+        <div class="step-title">Real-time risk scoring</div>
+        <div class="step-desc">Our engine analyzes message frequency, reply speed, conversation patterns, and timing anomalies — all in under 50ms.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">03 — ACT</div>
+        <div class="step-icon">🛡️</div>
+        <div class="step-title">One-click enforcement</div>
+        <div class="step-desc">Your trust & safety team reviews flagged accounts in the dashboard and takes action — before a scam ever completes.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="section" style="padding-top:0">
+    <div class="section-label">Features</div>
+    <div class="section-title">Everything your trust<br>& safety team needs</div>
+    <div class="section-sub">Built specifically for peer-to-peer marketplaces, from rental platforms to service marketplaces.</div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">Behavioral Analysis</div>
+        <div class="feature-desc">Tracks message frequency, reply speeds, conversation counts, and activity spikes — the metadata signals scammers leave behind.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔑</div>
+        <div class="feature-title">API Key Authentication</div>
+        <div class="feature-desc">Each marketplace gets isolated data with their own API key. Multi-tenant architecture means your data is always separate.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-title">Privacy First</div>
+        <div class="feature-desc">We never read message content. Only metadata is analyzed — making Driftline compliant with GDPR, CCPA, and similar regulations.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <div class="feature-title">Real-Time Webhooks</div>
+        <div class="feature-desc">Get instant alerts when a high-risk account is detected. Integrate with Slack, PagerDuty, or any webhook endpoint.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD PREVIEW -->
+  <section class="section" style="padding-top:0">
+    <div class="section-label">Dashboard</div>
+    <div class="section-title">Your fraud command center</div>
+    <div class="section-sub">A real-time view of every flagged account across your marketplace.</div>
+    <div class="dashboard-preview">
+      <div class="preview-bar">
+        <div class="preview-dot" style="background:#ff5f57"></div>
+        <div class="preview-dot" style="background:#febc2e"></div>
+        <div class="preview-dot" style="background:#28c840"></div>
+        <div class="preview-url">app.trydriftline.com/dashboard</div>
+      </div>
+      <div class="preview-content">
+        <div class="preview-stats">
+          <div class="preview-stat">
+            <div class="preview-stat-label">Total Scanned</div>
+            <div class="preview-stat-value" style="color:var(--text)">247</div>
+          </div>
+          <div class="preview-stat">
+            <div class="preview-stat-label">Flagged</div>
+            <div class="preview-stat-value" style="color:var(--critical)">3</div>
+          </div>
+          <div class="preview-stat">
+            <div class="preview-stat-label">Critical</div>
+            <div class="preview-stat-value" style="color:var(--critical)">3</div>
+          </div>
+          <div class="preview-stat">
+            <div class="preview-stat-label">Flag Rate</div>
+            <div class="preview-stat-value" style="color:var(--accent)">1.2%</div>
+          </div>
+        </div>
+        <div class="preview-accounts">
+          <div class="preview-account">
+            <div class="preview-account-left">
+              <div class="preview-avatar" style="background:rgba(255,69,96,0.15);color:var(--critical)">S</div>
+              <div>
+                <div class="preview-account-id">scammer_001</div>
+                <div class="preview-account-reason">45 messages in 1 hour · Bot-like reply speed</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="text-align:right">
+                <div style="font-family:'Clash Display',sans-serif;font-size:24px;font-weight:700;color:var(--critical)">97</div>
+                <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">RISK SCORE</div>
+              </div>
+              <div class="preview-badge" style="background:rgba(255,69,96,0.15);color:var(--critical);border:1px solid rgba(255,69,96,0.2)">CRITICAL</div>
+            </div>
+          </div>
+          <div class="preview-account">
+            <div class="preview-account-left">
+              <div class="preview-avatar" style="background:rgba(255,140,66,0.15);color:var(--high)">U</div>
+              <div>
+                <div class="preview-account-id">user_spammer_88</div>
+                <div class="preview-account-reason">High message frequency · Unusual conversation count</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="text-align:right">
+                <div style="font-family:'Clash Display',sans-serif;font-size:24px;font-weight:700;color:var(--high)">74</div>
+                <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace">RISK SCORE</div>
+              </div>
+              <div class="preview-badge" style="background:rgba(255,140,66,0.15);color:var(--high);border:1px solid rgba(255,140,66,0.2)">HIGH</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <div id="pricing"></div>
+  <section class="section">
+    <div class="section-label">Pricing</div>
+    <div class="section-title">Simple, usage-based pricing</div>
+    <div class="section-sub">Start free, scale as you grow. No setup fees, no long-term contracts.</div>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="plan-name">Starter</div>
+        <div class="plan-price">$0<span>/mo</span></div>
+        <div class="plan-period">Up to 10,000 events/month</div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> 10K events/month</li>
+          <li><span class="check">✓</span> Real-time risk scoring</li>
+          <li><span class="check">✓</span> Dashboard access</li>
+          <li><span class="check">✓</span> API access</li>
+          <li><span class="check">✓</span> Email support</li>
+        </ul>
+        <button class="btn btn-outline" style="width:100%;justify-content:center" onclick="showPage('login')">Get started free</button>
+      </div>
+      <div class="pricing-card featured">
+        <div class="plan-name">Growth</div>
+        <div class="plan-price">$299<span>/mo</span></div>
+        <div class="plan-period">Up to 500,000 events/month</div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> 500K events/month</li>
+          <li><span class="check">✓</span> Everything in Starter</li>
+          <li><span class="check">✓</span> Webhook alerts</li>
+          <li><span class="check">✓</span> Priority support</li>
+          <li><span class="check">✓</span> Custom risk thresholds</li>
+        </ul>
+        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="showPage('login')">Start free trial</button>
+      </div>
+      <div class="pricing-card">
+        <div class="plan-name">Enterprise</div>
+        <div class="plan-price" style="font-size:36px">Custom</div>
+        <div class="plan-period">Unlimited events</div>
+        <ul class="plan-features">
+          <li><span class="check">✓</span> Unlimited events</li>
+          <li><span class="check">✓</span> Everything in Growth</li>
+          <li><span class="check">✓</span> SLA guarantee</li>
+          <li><span class="check">✓</span> Dedicated support</li>
+          <li><span class="check">✓</span> Custom integrations</li>
+        </ul>
+        <button class="btn btn-outline" style="width:100%;justify-content:center">Contact sales</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <div class="cta-section">
+    <h2>Ready to protect your marketplace?</h2>
+    <p>Join marketplaces already using Driftline to stop fraud before it starts.</p>
+    <div class="cta-actions">
+      <button class="btn btn-primary btn-large" onclick="showPage('login')">Start for free →</button>
+      <button class="btn btn-outline btn-large" onclick="showPage('dashboard')">View live demo</button>
+    </div>
   </div>
 
-  <div class="accounts-list" id="accounts-list">
-    <div class="loading">
-      <div class="loading-spinner"></div>
-      Connecting to Driftline API...
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">Driftline</div>
+    <div class="footer-links">
+      <a onclick="showPage('home')">Home</a>
+      <a onclick="showPage('about')">About</a>
+      <a onclick="showPage('dashboard')">Dashboard</a>
+      <a onclick="showPage('login')">Sign In</a>
+    </div>
+    <div class="footer-copy">© 2026 Driftline. All rights reserved.</div>
+  </footer>
+
+</div>
+
+<!-- LOGIN PAGE -->
+<div id="page-login" class="page">
+  <div style="padding-top:64px;min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;z-index:1">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="nav-logo-dot"></div>
+        Driftline
+      </div>
+      <div class="auth-subtitle">Sign in to your account to access the dashboard</div>
+      <div class="form-group">
+        <label class="form-label">Email address</label>
+        <input type="email" class="form-input" id="login-email" placeholder="you@company.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="login-password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:14px" onclick="doLogin()">Sign in →</button>
+      <div class="form-divider"><span>or</span></div>
+      <button class="btn btn-outline" style="width:100%;justify-content:center;padding:14px" onclick="doDemo()">Continue with demo account</button>
+      <div class="api-key-display" id="api-key-display">
+        <div class="api-key-label">YOUR API KEY</div>
+        <div id="api-key-value">dk_alpha_marketplace_001</div>
+      </div>
+      <div class="form-footer">
+        Don't have an account? <a onclick="showPage('login')">Request early access</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD PAGE -->
+<div id="page-dashboard" class="page">
+  <div class="dash-header">
+    <div>
+      <div class="dash-title">Trust & Safety Dashboard</div>
+      <div class="dash-subtitle">AlphaMarket · Real-time fraud detection</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="status-pill">
+        <div class="status-dot"></div>
+        <span id="api-status">connecting...</span>
+      </div>
+      <button class="refresh-btn" onclick="loadDashboard()">↻ Refresh</button>
+    </div>
+  </div>
+  <div class="dash-body">
+    <div class="dash-stats">
+      <div class="dash-stat" style="--stat-color: var(--accent)">
+        <div class="dash-stat-label">Total Scanned</div>
+        <div class="dash-stat-value" id="total-scanned">—</div>
+        <div class="dash-stat-sub">accounts analyzed</div>
+      </div>
+      <div class="dash-stat" style="--stat-color: var(--critical)">
+        <div class="dash-stat-label">Flagged</div>
+        <div class="dash-stat-value" style="color:var(--critical)" id="total-flagged">—</div>
+        <div class="dash-stat-sub">require review</div>
+      </div>
+      <div class="dash-stat" style="--stat-color: var(--critical)">
+        <div class="dash-stat-label">Critical</div>
+        <div class="dash-stat-value" style="color:var(--critical)" id="total-critical">—</div>
+        <div class="dash-stat-sub">suspend immediately</div>
+      </div>
+      <div class="dash-stat" style="--stat-color: var(--accent)">
+        <div class="dash-stat-label">Flag Rate</div>
+        <div class="dash-stat-value" style="color:var(--accent)" id="flag-rate">—</div>
+        <div class="dash-stat-sub">of all accounts</div>
+      </div>
+    </div>
+    <div class="dash-section-header">
+      <div class="dash-section-title">Flagged Accounts</div>
+      <span class="dash-count" id="account-count">loading...</span>
+    </div>
+    <div class="accounts-list" id="accounts-list">
+      <div class="dash-loading">
+        <div class="dash-spinner"></div>
+        Connecting to Driftline API...
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ABOUT PAGE -->
+<div id="page-about" class="page">
+  <div class="about-hero">
+    <div class="section-label">About Driftline</div>
+    <div class="section-title">We built what we wished existed</div>
+    <p style="font-size:18px;color:var(--text2);line-height:1.7;margin-top:16px">Driftline was founded after seeing firsthand how peer-to-peer marketplaces struggle to detect fraud before damage is done. Most tools act after the fact. We act during the conversation.</p>
+  </div>
+  <div class="about-body">
+    <div class="about-grid">
+      <div class="about-card">
+        <div class="about-card-title">🎯 Our Mission</div>
+        <div class="about-card-text">To make peer-to-peer marketplaces safe for everyone — buyers, sellers, and the platforms that connect them. We believe trust is the foundation of every marketplace, and protecting that trust should be simple.</div>
+      </div>
+      <div class="about-card">
+        <div class="about-card-title">🔒 Privacy by Design</div>
+        <div class="about-card-text">We never read message content. We analyze only metadata — timestamps, reply speeds, conversation counts. This makes Driftline compliant by default with GDPR, CCPA, and similar regulations worldwide.</div>
+      </div>
+      <div class="about-card">
+        <div class="about-card-title">⚡ Built for Scale</div>
+        <div class="about-card-text">Our infrastructure processes millions of events per day with sub-50ms response times. Whether you have 1,000 users or 10 million, Driftline scales with you without configuration changes.</div>
+      </div>
+      <div class="about-card">
+        <div class="about-card-title">🤝 Partner First</div>
+        <div class="about-card-text">We work closely with our marketplace partners to tune risk models for their specific context. What's suspicious on a rental platform differs from a service marketplace — we account for that.</div>
+      </div>
+    </div>
+    <div class="team-section">
+      <div class="section-label">Team</div>
+      <div class="section-title">Built by people who care</div>
+      <div class="team-grid">
+        <div class="team-card">
+          <div class="team-avatar">👤</div>
+          <div class="team-name">Leo Cohen</div>
+          <div class="team-role">Founder & CEO</div>
+        </div>
+        <div class="team-card">
+          <div class="team-avatar">💻</div>
+          <div class="team-name">Engineering</div>
+          <div class="team-role">We're hiring</div>
+        </div>
+        <div class="team-card">
+          <div class="team-avatar">📊</div>
+          <div class="team-name">Growth</div>
+          <div class="team-role">We're hiring</div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -191,69 +1191,83 @@ const API = 'https://driftline-api-production.up.railway.app';
 const API_KEY = 'dk_alpha_marketplace_001';
 const HEADERS = { 'X-API-Key': API_KEY, 'Content-Type': 'application/json' };
 
-function getRiskColor(level) {
-  return { critical: '#ff3c6e', high: '#ff8c42', medium: '#ffd166', low: '#06d6a0' }[level] || '#6b6b80';
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  window.scrollTo(0,0);
+  if (name === 'dashboard') loadDashboard();
 }
 
-async function loadData() {
+function getRiskColor(level) {
+  return { critical: '#ff4560', high: '#ff8c42', medium: '#ffd166', low: '#00d4aa' }[level] || '#606080';
+}
+
+async function loadDashboard() {
   try {
     const [statsRes, flaggedRes] = await Promise.all([
       fetch(API + '/stats', { headers: HEADERS }),
       fetch(API + '/flagged', { headers: HEADERS })
     ]);
-
-    if (!statsRes.ok || !flaggedRes.ok) throw new Error('API error ' + statsRes.status);
-
+    if (!statsRes.ok || !flaggedRes.ok) throw new Error('API error');
     const stats = await statsRes.json();
     const flagged = await flaggedRes.json();
 
     document.getElementById('api-status').textContent = 'live';
     document.getElementById('total-scanned').textContent = stats.total_scanned || 0;
     document.getElementById('total-flagged').textContent = stats.total_flagged || 0;
-    const criticalCount = (flagged.results || []).filter(a => a.risk_level === 'critical').length; document.getElementById('total-critical').textContent = criticalCount;
+    const accounts = flagged.results || flagged.accounts || [];
+    const critical = accounts.filter(a => a.risk_level === 'critical').length;
+    document.getElementById('total-critical').textContent = critical;
     document.getElementById('flag-rate').textContent = (stats.flag_rate_percent || stats.flag_rate || 0) + '%';
+    document.getElementById('account-count').textContent = accounts.length + ' accounts';
+    document.getElementById('total-flagged').textContent = flagged.total_flagged || accounts.length;
 
-    const accounts = flagged.results || flagged.flagged_accounts || flagged.accounts || [];
-    document.getElementById('account-count').textContent = accounts.length + ' accounts'; document.getElementById('total-flagged').textContent = flagged.total_flagged || accounts.length;
-
-    if (accounts.length === 0) {
-      document.getElementById('accounts-list').innerHTML = '<div class="loading">No flagged accounts</div>';
+    if (!accounts.length) {
+      document.getElementById('accounts-list').innerHTML = '<div class="dash-loading">No flagged accounts</div>';
       return;
     }
 
     document.getElementById('accounts-list').innerHTML = accounts.map((a, i) => {
-      const level = a.flag || a.risk_level || 'unknown';
+      const level = a.risk_level || 'unknown';
       const color = getRiskColor(level);
       const score = a.risk_score || 0;
       const initial = (a.user_id || 'U')[0].toUpperCase();
-      const reason = a.flag_reason || a.reason || (Array.isArray(a.flags) ? a.flags[0] : a.flags) || a.recommendation || 'Suspicious behavior detected';
-      return `
-        <div class="account-card" style="animation-delay:${i*0.05}s">
-          <div class="account-left">
-            <div class="account-avatar" style="background:${color}20;color:${color}">${initial}</div>
-            <div>
-              <div class="account-id">${a.user_id || 'unknown'}</div>
-              <div class="account-reason">${reason}</div>
-            </div>
+      const reason = a.flag_reason || a.reason || 'Suspicious behavior detected';
+      return `<div class="account-card" style="animation-delay:${i*0.05}s">
+        <div class="account-left">
+          <div class="account-avatar" style="background:${color}20;color:${color}">${initial}</div>
+          <div>
+            <div class="account-id">${a.user_id || 'unknown'}</div>
+            <div class="account-reason">${reason}</div>
           </div>
-          <div class="account-right">
-            <div class="risk-score">
-              <div class="risk-number" style="color:${color}">${score}</div>
-              <div class="risk-label">risk score</div>
-            </div>
-            <div class="badge badge-${level}">${level}</div>
+        </div>
+        <div class="account-right">
+          <div class="risk-score">
+            <div class="risk-number" style="color:${color}">${score}</div>
+            <div class="risk-label">risk score</div>
           </div>
-        </div>`;
+          <div class="badge badge-${level}">${level}</div>
+        </div>
+      </div>`;
     }).join('');
-
-  } catch (err) {
+  } catch(err) {
     document.getElementById('api-status').textContent = 'error';
-    document.getElementById('accounts-list').innerHTML = `<div class="error-msg">Could not connect to Driftline API<br><small style="opacity:0.6;margin-top:8px;display:block">${err.message}</small></div>`;
+    document.getElementById('accounts-list').innerHTML = '<div class="dash-loading" style="color:var(--critical)">Could not connect to API</div>';
   }
 }
 
-loadData();
-setInterval(loadData, 30000);
+function doLogin() {
+  const email = document.getElementById('login-email').value;
+  const pass = document.getElementById('login-password').value;
+  if (!email || !pass) { alert('Please enter email and password'); return; }
+  document.getElementById('api-key-display').style.display = 'block';
+  setTimeout(() => showPage('dashboard'), 1500);
+}
+
+function doDemo() {
+  document.getElementById('api-key-display').style.display = 'block';
+  setTimeout(() => showPage('dashboard'), 1000);
+}
 </script>
 </body>
 </html>
