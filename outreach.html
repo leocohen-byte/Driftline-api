@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Driftline Outreach Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #07070f; --surface: #0f0f1c; --surface2: #161628;
+  --border: #1e1e35; --border2: #2a2a45;
+  --accent: #5b6ef5; --accent-light: #7b8ef7; --purple: #a78bfa;
+  --green: #10d9a0; --red: #ff4560; --yellow: #ffd166;
+  --text: #ffffff; --text2: #e2e2f0; --text3: #9898b8; --text4: #5a5a7a;
+}
+body { background: var(--bg); color: var(--text); font-family: 'Plus Jakarta Sans', sans-serif; min-height: 100vh; }
+body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse 80% 50% at 20% -10%, rgba(91,110,245,0.08) 0%, transparent 55%); pointer-events: none; z-index: 0; }
+
+header { padding: 20px 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: relative; z-index: 1; }
+.logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; }
+.logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.gmail-status { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 100px; font-size: 13px; font-weight: 600; }
+.gmail-connected { background: rgba(16,217,160,0.1); border: 1px solid rgba(16,217,160,0.2); color: var(--green); }
+.gmail-disconnected { background: rgba(91,110,245,0.1); border: 1px solid rgba(91,110,245,0.2); color: var(--accent-light); cursor: pointer; }
+.gmail-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+.container { max-width: 1000px; margin: 0 auto; padding: 40px; position: relative; z-index: 1; }
+h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+.subtitle { font-size: 16px; color: var(--text3); margin-bottom: 40px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 28px; margin-bottom: 20px; }
+.card-title { font-size: 11px; font-weight: 700; color: var(--text4); text-transform: uppercase; letter-spacing: 0.12em; font-family: 'DM Mono', monospace; margin-bottom: 16px; }
+
+label { display: block; font-size: 13px; font-weight: 600; color: var(--text2); margin-bottom: 8px; }
+input, select, textarea { width: 100%; padding: 12px 16px; background: var(--bg); border: 1px solid var(--border2); border-radius: 10px; color: var(--text); font-size: 14px; font-family: 'Plus Jakarta Sans', sans-serif; outline: none; transition: border-color 0.2s; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+input::placeholder, textarea::placeholder { color: var(--text4); }
+select option { background: var(--surface2); }
+textarea { resize: vertical; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.fgroup { margin-bottom: 16px; }
+.note { font-size: 12px; color: var(--text4); margin-top: 6px; font-style: italic; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; border: none; font-family: 'Plus Jakarta Sans', sans-serif; }
+.btn-primary { background: var(--accent); color: #fff; box-shadow: 0 0 20px rgba(91,110,245,0.3); width: 100%; font-size: 16px; padding: 16px; }
+.btn-primary:hover { background: var(--accent-light); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-sm { padding: 7px 14px; font-size: 12px; border-radius: 7px; font-family: 'DM Mono', monospace; font-weight: 600; }
+.btn-copy { background: rgba(91,110,245,0.1); color: var(--accent-light); border: 1px solid rgba(91,110,245,0.2); }
+.btn-copy:hover { background: rgba(91,110,245,0.2); }
+.btn-send { background: rgba(16,217,160,0.1); color: var(--green); border: 1px solid rgba(16,217,160,0.2); }
+.btn-send:hover { background: rgba(16,217,160,0.2); }
+.btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.progress { display: none; margin-bottom: 24px; }
+.progress.show { display: block; }
+.progress-bar-outer { background: var(--border); border-radius: 100px; height: 6px; margin-bottom: 8px; overflow: hidden; }
+.progress-bar-inner { height: 100%; background: linear-gradient(90deg, var(--accent), var(--purple)); border-radius: 100px; transition: width 0.5s; }
+.progress-text { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3); }
+
+.results { display: none; }
+.results.show { display: block; }
+.results-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.results-header h2 { font-size: 20px; font-weight: 700; }
+.results-count { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text4); background: var(--surface); border: 1px solid var(--border); padding: 4px 12px; border-radius: 6px; }
+
+.contact-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; margin-bottom: 14px; overflow: hidden; transition: border-color 0.2s; }
+.contact-card:hover { border-color: var(--border2); }
+.contact-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.contact-info { display: flex; align-items: center; gap: 12px; }
+.contact-av { width: 42px; height: 42px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; flex-shrink: 0; }
+.contact-name { font-size: 14px; font-weight: 700; }
+.contact-meta { font-size: 11px; color: var(--text4); font-family: 'DM Mono', monospace; margin-top: 2px; }
+.contact-right { display: flex; align-items: center; gap: 10px; }
+.email-found { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--green); background: rgba(16,217,160,0.08); border: 1px solid rgba(16,217,160,0.15); padding: 3px 10px; border-radius: 5px; }
+.email-searching { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text4); }
+.email-not-found { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--yellow); background: rgba(255,209,102,0.08); border: 1px solid rgba(255,209,102,0.15); padding: 3px 10px; border-radius: 5px; }
+.status-badge { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 100px; text-transform: uppercase; }
+.s-ready { background: rgba(16,217,160,0.12); color: var(--green); border: 1px solid rgba(16,217,160,0.2); }
+.s-sent { background: rgba(91,110,245,0.12); color: var(--accent-light); border: 1px solid rgba(91,110,245,0.2); }
+.s-gen { background: rgba(255,209,102,0.08); color: var(--yellow); border: 1px solid rgba(255,209,102,0.15); }
+
+.contact-body { padding: 0 20px 18px; display: none; }
+.contact-body.open { display: block; }
+.why-tag { font-size: 11px; color: var(--text4); font-family: 'DM Mono', monospace; margin-bottom: 12px; background: var(--surface2); padding: 6px 10px; border-radius: 6px; }
+.email-preview { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+.email-to { font-size: 12px; color: var(--text4); font-family: 'DM Mono', monospace; margin-bottom: 6px; }
+.email-subject-label { font-size: 11px; font-weight: 700; color: var(--text3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.08em; font-family: 'DM Mono', monospace; }
+.email-subject-val { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 12px; }
+.email-body { font-size: 13px; color: var(--text2); line-height: 1.75; white-space: pre-wrap; }
+.email-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 10px; padding: 12px 20px; font-size: 14px; z-index: 9999; transform: translateY(80px); opacity: 0; transition: all 0.3s; max-width: 320px; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.ok { color: var(--green); border-color: rgba(16,217,160,0.3); }
+.toast.err { color: var(--red); border-color: rgba(255,69,96,0.3); }
+
+@media (max-width: 768px) {
+  .container { padding: 20px; }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  header { padding: 16px 20px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>Driftline Outreach Engine</div>
+  <div class="header-right">
+    <div class="gmail-status gmail-disconnected" id="gmail-btn" onclick="connectGmail()">
+      <div class="gmail-dot"></div>
+      <span id="gmail-label">Connect Gmail</span>
+    </div>
+  </div>
+</header>
+
+<div class="container">
+  <h1>Find, Email & Send — Automatically</h1>
+  <p class="subtitle">Claude finds the right people, Hunter.io finds their emails, Gmail sends from your inbox.</p>
+
+  <!-- KEYS -->
+  <div class="card">
+    <div class="card-title">API Keys</div>
+    <div class="grid-2">
+      <div class="fgroup">
+        <label>Claude API Key</label>
+        <input type="password" id="claude-key" placeholder="sk-ant-api03-...">
+        <p class="note">console.anthropic.com → API Keys</p>
+      </div>
+      <div class="fgroup">
+        <label>Hunter.io API Key</label>
+        <input type="password" id="hunter-key" value="a0d0373672173e9b24c3cfffbed0ebde4ec61600">
+        <p class="note">hunter.io → API</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DRIFTLINE CONTEXT -->
+  <div class="card">
+    <div class="card-title">Driftline Context</div>
+    <div class="fgroup">
+      <label>Product description</label>
+      <textarea id="product-desc" rows="2">Driftline is a real-time fraud detection API for digital platforms. It analyzes messaging metadata — message frequency, reply speed, conversation patterns — to detect scammers before any transaction happens. Privacy-first: no message content is ever read. Simple REST API, risk scores returned in real time.</textarea>
+    </div>
+    <div class="grid-2">
+      <div class="fgroup">
+        <label>Your name</label>
+        <input type="text" id="sender-name" value="Leo Cohen">
+      </div>
+      <div class="fgroup">
+        <label>Your email (to send from)</label>
+        <input type="text" id="sender-email" placeholder="your@email.com">
+        <p class="note">Must match your connected Gmail account</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TARGETING -->
+  <div class="card">
+    <div class="card-title">Who To Target</div>
+    <div class="fgroup">
+      <label>Type of company</label>
+      <input type="text" id="target-desc" value="peer-to-peer marketplace or platform where users message each other before transacting">
+    </div>
+    <div class="grid-3">
+      <div class="fgroup">
+        <label>Target title</label>
+        <select id="target-title">
+          <option>Head of Trust and Safety</option>
+          <option>VP of Product</option>
+          <option>CEO or Founder</option>
+          <option>Head of Operations</option>
+          <option>CTO</option>
+        </select>
+      </div>
+      <div class="fgroup">
+        <label>Company size</label>
+        <select id="company-size">
+          <option value="any size">Any</option>
+          <option value="startup under 50 employees">Startup &lt;50</option>
+          <option value="mid-size 50-500 employees">Mid 50–500</option>
+          <option value="large 500+ employees">Large 500+</option>
+        </select>
+      </div>
+      <div class="fgroup">
+        <label>Number of contacts</label>
+        <select id="num-contacts">
+          <option value="5">5</option>
+          <option value="8" selected>8</option>
+          <option value="10">10</option>
+          <option value="15">15</option>
+        </select>
+      </div>
+    </div>
+    <div class="fgroup">
+      <label>Specific companies to include (optional)</label>
+      <input type="text" id="specific-companies" placeholder="e.g. Rover, Peerspace, Getaround">
+      <p class="note">Already contacted: Bark, Boatsetter, Neighbor, RVshare, Thumbtack, ThredUP, TaskRabbit, Poshmark, Sniffspot, Hipcamp, Whatnot</p>
+    </div>
+  </div>
+
+  <!-- EMAIL STYLE -->
+  <div class="card">
+    <div class="card-title">Email Style</div>
+    <div class="grid-2">
+      <div class="fgroup">
+        <label>Tone</label>
+        <select id="tone">
+          <option value="direct and confident, founder-to-founder">Direct & confident</option>
+          <option value="warm and curious">Warm & curious</option>
+          <option value="brief and punchy, under 80 words">Brief & punchy</option>
+        </select>
+      </div>
+      <div class="fgroup">
+        <label>Call to action</label>
+        <select id="cta">
+          <option value="ask if this is a problem they're actively working on">Ask if it's a problem they're solving</option>
+          <option value="ask for a 15-minute call">Request 15-min call</option>
+          <option value="ask if there's a better person internally to speak with">Ask for internal intro</option>
+        </select>
+      </div>
+    </div>
+    <div class="fgroup">
+      <label>Extra context to mention (optional)</label>
+      <input type="text" id="mention-extra" placeholder="e.g. we have a meeting with Bark.com, live product at trydriftline.com">
+    </div>
+  </div>
+
+  <div class="progress" id="progress">
+    <div class="progress-bar-outer"><div class="progress-bar-inner" id="progress-bar" style="width:0%"></div></div>
+    <div class="progress-text" id="progress-text">Starting...</div>
+  </div>
+
+  <button class="btn btn-primary" id="run-btn" onclick="runOutreach()">
+    ⚡ Find Targets, Get Emails & Write Outreach
+  </button>
+
+  <div class="results" id="results" style="margin-top:32px">
+    <div class="results-header">
+      <h2>Outreach Queue</h2>
+      <span class="results-count" id="results-count">0 contacts</span>
+    </div>
+    <div id="contacts-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var GOOGLE_CLIENT_ID = '875788517723-labu7d6r1sdr27qr886id399j9m5lb2k.apps.googleusercontent.com';
+var HUNTER_KEY = 'a0d0373672173e9b24c3cfffbed0ebde4ec61600';
+var gmailToken = null;
+var contacts = [];
+var expanded = {};
+
+// ── GMAIL AUTH ──────────────────────────────────────────────────────────────
+function connectGmail() {
+  var client = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly',
+    callback: function(resp) {
+      if (resp.access_token) {
+        gmailToken = resp.access_token;
+        document.getElementById('gmail-btn').className = 'gmail-status gmail-connected';
+        document.getElementById('gmail-label').textContent = 'Gmail Connected ✓';
+        showToast('Gmail connected!', 'ok');
+        fetchGmailEmail();
+      }
+    }
+  });
+  client.requestAccessToken();
+}
+
+function fetchGmailEmail() {
+  if (!gmailToken) return;
+  fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+    headers: { 'Authorization': 'Bearer ' + gmailToken }
+  }).then(function(r) { return r.json(); })
+  .then(function(d) {
+    if (d.emailAddress) {
+      document.getElementById('sender-email').value = d.emailAddress;
+    }
+  }).catch(function() {});
+}
+
+// ── CLAUDE ──────────────────────────────────────────────────────────────────
+async function callClaude(prompt) {
+  var key = document.getElementById('claude-key').value.trim();
+  if (!key) throw new Error('Please enter your Claude API key');
+  var res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  var data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  var text = '';
+  (data.content || []).forEach(function(b) { if (b.type === 'text') text += b.text; });
+  return text;
+}
+
+// ── HUNTER ──────────────────────────────────────────────────────────────────
+async function findEmail(firstName, lastName, domain) {
+  try {
+    var hKey = document.getElementById('hunter-key').value.trim() || HUNTER_KEY;
+    var url = 'https://api.hunter.io/v2/email-finder?domain=' + encodeURIComponent(domain) +
+      '&first_name=' + encodeURIComponent(firstName) +
+      '&last_name=' + encodeURIComponent(lastName) +
+      '&api_key=' + hKey;
+    var res = await fetch(url);
+    var data = await res.json();
+    if (data.data && data.data.email) return data.data.email;
+    // fallback: domain search
+    var url2 = 'https://api.hunter.io/v2/domain-search?domain=' + encodeURIComponent(domain) + '&api_key=' + hKey + '&limit=5';
+    var res2 = await fetch(url2);
+    var data2 = await res2.json();
+    if (data2.data && data2.data.emails && data2.data.emails.length > 0) {
+      var pattern = data2.data.pattern;
+      if (pattern) {
+        var fn = firstName.toLowerCase(), ln = lastName.toLowerCase();
+        var email = pattern
+          .replace('{first}', fn).replace('{last}', ln)
+          .replace('{f}', fn[0]).replace('{l}', ln[0]);
+        return email + '@' + domain;
+      }
+      return data2.data.emails[0].value;
+    }
+    return null;
+  } catch(e) { return null; }
+}
+
+function getDomain(company) {
+  return company.toLowerCase().replace(/[^a-z0-9]/g, '').replace(/inc|llc|ltd|co$/g, '') + '.com';
+}
+
+function splitName(fullName) {
+  var parts = fullName.trim().split(' ');
+  return { first: parts[0], last: parts.slice(1).join(' ') || parts[0] };
+}
+
+// ── FIND TARGETS ────────────────────────────────────────────────────────────
+async function findTargets() {
+  var prompt = 'I am doing B2B sales outreach for Driftline, a fraud detection API targeting ' + document.getElementById('target-desc').value + '.\n\n' +
+    'Generate a list of exactly ' + document.getElementById('num-contacts').value + ' real companies I should reach out to.\n\n' +
+    'Requirements:\n- Target: ' + document.getElementById('target-desc').value + '\n' +
+    '- Size: ' + document.getElementById('company-size').value + '\n' +
+    '- Contact title: ' + document.getElementById('target-title').value + '\n' +
+    '- Do NOT include: Bark, Boatsetter, Neighbor, RVshare, Thumbtack, ThredUP, TaskRabbit, Poshmark, Sniffspot, Hipcamp, Whatnot\n' +
+    (document.getElementById('specific-companies').value ? '- Try to include: ' + document.getElementById('specific-companies').value + '\n' : '') +
+    '\nFor each company include the real website domain (just the domain like "rover.com", not the full URL).\n\n' +
+    'Respond ONLY with a valid JSON array, no markdown:\n' +
+    '[{"company":"Rover","domain":"rover.com","contact_name":"Aaron Easterly","title":"CEO","why":"Dog sitting P2P platform with heavy user messaging before bookings"}]\n\n' +
+    'Return exactly ' + document.getElementById('num-contacts').value + ' entries.';
+  var raw = await callClaude(prompt);
+  var clean = raw.replace(/```json|```/g, '').trim();
+  var s = clean.indexOf('['), e = clean.lastIndexOf(']');
+  if (s === -1) throw new Error('Could not parse company list');
+  return JSON.parse(clean.slice(s, e + 1));
+}
+
+// ── GENERATE EMAIL ───────────────────────────────────────────────────────────
+async function generateEmail(contact) {
+  var prompt = 'Write a cold outreach email from ' + document.getElementById('sender-name').value + ' (founder of Driftline) to ' + contact.contact_name + ', ' + contact.title + ' at ' + contact.company + '.\n\n' +
+    'About Driftline: ' + document.getElementById('product-desc').value + '\n' +
+    'Why ' + contact.company + ': ' + contact.why + '\n\n' +
+    'Requirements:\n- Tone: ' + document.getElementById('tone').value + '\n' +
+    '- CTA: ' + document.getElementById('cta').value + '\n' +
+    '- Under 120 words\n- Mention something specific about ' + contact.company + '\n' +
+    '- Do NOT start with I hope this email finds you\n' +
+    '- Sign off: ' + document.getElementById('sender-name').value + ', Founder, Driftline, trydriftline.com\n' +
+    (document.getElementById('mention-extra').value ? '- Mention: ' + document.getElementById('mention-extra').value + '\n' : '') +
+    '\nRespond ONLY with valid JSON, no markdown:\n{"subject":"subject here","body":"full email body here"}';
+  var raw = await callClaude(prompt);
+  var clean = raw.replace(/```json|```/g, '').trim();
+  var s = clean.indexOf('{'), e = clean.lastIndexOf('}');
+  if (s === -1) throw new Error('Could not parse email');
+  return JSON.parse(clean.slice(s, e + 1));
+}
+
+// ── SEND EMAIL VIA GMAIL ─────────────────────────────────────────────────────
+async function sendEmail(idx) {
+  var c = contacts[idx];
+  if (!gmailToken) { showToast('Connect Gmail first', 'err'); return; }
+  if (!c.emailAddress) { showToast('No email address found', 'err'); return; }
+  if (!c.email) { showToast('Email not generated yet', 'err'); return; }
+
+  var from = document.getElementById('sender-email').value;
+  var raw = 'From: ' + from + '\r\nTo: ' + c.emailAddress + '\r\nSubject: ' + c.email.subject + '\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n' + c.email.body;
+  var encoded = btoa(unescape(encodeURIComponent(raw))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  try {
+    var res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + gmailToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw: encoded })
+    });
+    var data = await res.json();
+    if (data.id) {
+      contacts[idx].status = 'sent';
+      renderContacts();
+      showToast('Sent to ' + c.contact_name + '!', 'ok');
+    } else {
+      showToast('Send failed: ' + (data.error ? data.error.message : 'Unknown error'), 'err');
+    }
+  } catch(e) { showToast('Send error: ' + e.message, 'err'); }
+}
+
+// ── RENDER ───────────────────────────────────────────────────────────────────
+var COLORS = [
+  { bg: 'rgba(91,110,245,0.15)', color: '#7b8ef7' },
+  { bg: 'rgba(167,139,250,0.15)', color: '#a78bfa' },
+  { bg: 'rgba(16,217,160,0.15)', color: '#10d9a0' },
+  { bg: 'rgba(255,140,66,0.15)', color: '#ff8c42' },
+  { bg: 'rgba(255,209,102,0.15)', color: '#ffd166' },
+  { bg: 'rgba(255,69,96,0.15)', color: '#ff4560' },
+];
+
+function initials(name) { return name.split(' ').map(function(p) { return p[0]; }).join('').toUpperCase().slice(0,2); }
+
+function renderContacts() {
+  if (!contacts.length) { document.getElementById('contacts-list').innerHTML = ''; return; }
+  document.getElementById('results-count').textContent = contacts.length + ' contacts';
+  var html = '';
+  contacts.forEach(function(c, i) {
+    var col = COLORS[i % COLORS.length];
+    var isOpen = expanded[i];
+    var emailBadge = c.emailAddress
+      ? '<span class="email-found">✓ ' + c.emailAddress + '</span>'
+      : c.lookingUp ? '<span class="email-searching">Looking up email...</span>'
+      : '<span class="email-not-found">Email not found</span>';
+    var statusBadge = c.status === 'sent' ? '<span class="status-badge s-sent">Sent ✓</span>'
+      : c.status === 'ready' ? '<span class="status-badge s-ready">Ready</span>'
+      : '<span class="status-badge s-gen">Writing...</span>';
+
+    html += '<div class="contact-card">';
+    html += '<div class="contact-header" onclick="toggleC(' + i + ')">';
+    html += '<div class="contact-info">';
+    html += '<div class="contact-av" style="background:' + col.bg + ';color:' + col.color + '">' + initials(c.contact_name) + '</div>';
+    html += '<div><div class="contact-name">' + c.contact_name + ' · ' + c.company + '</div>';
+    html += '<div class="contact-meta">' + c.title + '</div></div></div>';
+    html += '<div class="contact-right">' + emailBadge + statusBadge + '<span style="color:var(--text4);font-size:16px">' + (isOpen ? '▲' : '▼') + '</span></div>';
+    html += '</div>';
+
+    if (isOpen) {
+      html += '<div class="contact-body open">';
+      html += '<div class="why-tag">WHY ' + c.company.toUpperCase() + ': ' + c.why + '</div>';
+      if (c.email) {
+        html += '<div class="email-preview">';
+        if (c.emailAddress) html += '<div class="email-to">To: ' + c.emailAddress + '</div>';
+        html += '<div class="email-subject-label">Subject</div>';
+        html += '<div class="email-subject-val">' + c.email.subject + '</div>';
+        html += '<div class="email-body">' + c.email.body + '</div>';
+        html += '</div>';
+        html += '<div class="email-actions">';
+        html += '<button class="btn btn-sm btn-copy" onclick="copyEmail(' + i + ')">Copy Email</button>';
+        html += '<button class="btn btn-sm btn-copy" onclick="copySubject(' + i + ')">Copy Subject</button>';
+        if (c.emailAddress) {
+          var sendDisabled = c.status === 'sent' ? 'disabled' : '';
+          var sendLabel = c.status === 'sent' ? '✓ Sent' : 'Send via Gmail';
+          html += '<button class="btn btn-sm btn-send" onclick="sendEmail(' + i + ')" ' + sendDisabled + '>' + sendLabel + '</button>';
+        }
+        html += '</div>';
+      } else {
+        html += '<div style="color:var(--text4);font-size:13px;font-family:\'DM Mono\',monospace;padding:8px 0">Generating email...</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  document.getElementById('contacts-list').innerHTML = html;
+}
+
+function toggleC(i) { expanded[i] = !expanded[i]; renderContacts(); }
+
+function copyEmail(i) {
+  var c = contacts[i];
+  if (!c.email) return;
+  var text = (c.emailAddress ? 'To: ' + c.emailAddress + '\n' : '') + 'Subject: ' + c.email.subject + '\n\n' + c.email.body;
+  copy(text); showToast('Email copied!', 'ok');
+}
+function copySubject(i) { if (contacts[i].email) { copy(contacts[i].email.subject); showToast('Subject copied!', 'ok'); } }
+function copy(text) {
+  if (navigator.clipboard) { navigator.clipboard.writeText(text); return; }
+  var ta = document.createElement('textarea'); ta.value = text;
+  document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+}
+
+function setProgress(pct, text) {
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-text').textContent = text;
+}
+
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast ' + (type || '') + ' show';
+  setTimeout(function() { t.classList.remove('show'); }, 3000);
+}
+
+// ── MAIN FLOW ────────────────────────────────────────────────────────────────
+async function runOutreach() {
+  var btn = document.getElementById('run-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Working...';
+  document.getElementById('progress').classList.add('show');
+  document.getElementById('results').classList.add('show');
+  contacts = []; expanded = {};
+
+  try {
+    setProgress(5, 'Finding target companies with Claude...');
+    var targets = await findTargets();
+    contacts = targets.map(function(t) { return Object.assign({}, t, { status: 'generating', email: null, emailAddress: null, lookingUp: false }); });
+    renderContacts();
+
+    // Step 2: Look up emails in parallel
+    setProgress(20, 'Looking up email addresses with Hunter.io...');
+    var emailPromises = contacts.map(function(c, i) {
+      contacts[i].lookingUp = true;
+      var name = splitName(c.contact_name);
+      var domain = c.domain || getDomain(c.company);
+      return findEmail(name.first, name.last, domain).then(function(email) {
+        contacts[i].emailAddress = email;
+        contacts[i].lookingUp = false;
+        renderContacts();
+      });
+    });
+    await Promise.all(emailPromises);
+    setProgress(40, 'Writing personalized emails...');
+
+    // Step 3: Generate emails
+    for (var i = 0; i < contacts.length; i++) {
+      try {
+        var email = await generateEmail(contacts[i]);
+        contacts[i].email = email;
+        contacts[i].status = 'ready';
+        expanded[i] = i === 0;
+      } catch(e) {
+        contacts[i].email = { subject: 'Error', body: 'Could not generate email.' };
+        contacts[i].status = 'ready';
+      }
+      renderContacts();
+      setProgress(40 + Math.round((i + 1) / contacts.length * 55), 'Written ' + (i+1) + ' of ' + contacts.length + ' emails...');
+    }
+
+    setProgress(100, 'Done! ' + contacts.length + ' emails ready.');
+    showToast('All done! ' + contacts.filter(function(c) { return c.emailAddress; }).length + ' emails found.', 'ok');
+
+  } catch(e) {
+    setProgress(0, 'Error: ' + e.message);
+    showToast('Error: ' + e.message, 'err');
+  }
+
+  btn.disabled = false; btn.innerHTML = '⚡ Find Targets, Get Emails & Write Outreach';
+}
+</script>
+</body>
+</html>
