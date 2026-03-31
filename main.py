@@ -39,7 +39,21 @@ def init_db():
             timestamp FLOAT NOT NULL,
             reply_speed FLOAT,
             message_length INTEGER,
+            ip_address TEXT,
+            device_fingerprint TEXT,
             created_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS network_signals (
+            id SERIAL PRIMARY KEY,
+            ip_address TEXT,
+            device_fingerprint TEXT,
+            user_id TEXT,
+            platform TEXT,
+            api_key TEXT,
+            risk_score FLOAT,
+            flagged_at TIMESTAMP DEFAULT NOW()
         )
     """)
     cur.execute("""
@@ -279,6 +293,8 @@ def ingest_event(
     timestamp: float = Query(None),
     message_length: int = Query(None),
     reply_speed: float = Query(None),
+    ip_address: str = Query(None),
+    device_fingerprint: str = Query(None),
     api_key: str = Depends(get_tenant)
 ):
     ts = timestamp or time.time()
@@ -286,9 +302,9 @@ def ingest_event(
         conn = get_db()
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO events (api_key, user_id, conversation_id, platform, timestamp, reply_speed, message_length)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (api_key, user_id, conversation_id, platform, ts, reply_speed, message_length))
+            INSERT INTO events (api_key, user_id, conversation_id, platform, timestamp, reply_speed, message_length, ip_address, device_fingerprint)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (api_key, user_id, conversation_id, platform, ts, reply_speed, message_length, ip_address, device_fingerprint))
         conn.commit()
         cur.close()
         conn.close()
@@ -321,11 +337,61 @@ def ingest_event(
     except Exception:
         pass
 
+    # Store network signal for cross-platform intelligence
+    if sc >= 35 and (ip_address or device_fingerprint):
+        try:
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO network_signals (ip_address, device_fingerprint, user_id, platform, api_key, risk_score)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (ip_address, device_fingerprint, user_id, platform, api_key, sc))
+            conn.commit()
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+    # Cross-platform check
+    network_flags = []
+    if ip_address or device_fingerprint:
+        try:
+            conn = get_db()
+            cur = conn.cursor()
+            conditions = []
+            values = []
+            if ip_address:
+                conditions.append("ip_address = %s")
+                values.append(ip_address)
+            if device_fingerprint:
+                conditions.append("device_fingerprint = %s")
+                values.append(device_fingerprint)
+            values.append(api_key)
+            cur.execute("""
+                SELECT COUNT(DISTINCT platform) as platforms, COUNT(*) as signals
+                FROM network_signals
+                WHERE (%s) AND api_key != %%s AND risk_score >= 35
+            """ % " OR ".join(conditions), values)
+            row = cur.fetchone()
+            if row and row["signals"] > 0:
+                network_flags.append(f"Flagged on {row['platforms']} other platform(s) in Driftline network")
+                sc = min(sc + 20, 99)
+            cur.close()
+            conn.close()
+        except Exception:
+            pass
+
+    if network_flags:
+        fl = fl + network_flags
+        if sc >= 75: lv, rc = "critical", "Suspend account immediately"
+        elif sc >= 55: lv, rc = "high", "Limit messaging and verify identity"
+
     return {
         "user_id": user_id, "platform": platform,
         "risk_score": round(sc, 2), "risk_level": lv,
         "flags": fl, "flag_reason": fl[0] if fl else None,
-        "recommendation": rc, "analyzed_at": datetime.utcnow().isoformat()
+        "recommendation": rc, "analyzed_at": datetime.utcnow().isoformat(),
+        "network_match": len(network_flags) > 0
     }
 
 @app.get("/flagged")
@@ -433,3 +499,46 @@ def clear_account(user_id: str, action: str = Query("reviewed"), api_key: str = 
     except Exception as e:
         raise HTTPException(500, str(e))
     return {"user_id": user_id, "action": action, "status": "success"}
+
+@app.get("/find-email")
+def find_email(first_name: str = Query(...), last_name: str = Query(...), domain: str = Query(...)):
+    import urllib.request
+    import urllib.parse
+    HUNTER_KEY = "a0d0373672173e9b24c3cfffbed0ebde4ec61600"
+    try:
+        params = urllib.parse.urlencode({
+            "domain": domain,
+            "first_name": first_name,
+            "last_name": last_name,
+            "api_key": HUNTER_KEY
+        })
+        url = "https://api.hunter.io/v2/email-finder?" + params
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            import json
+            data = json.loads(resp.read())
+            email = data.get("data", {}).get("email")
+            confidence = data.get("data", {}).get("score", 0)
+            if email:
+                return {"email": email, "confidence": confidence, "found": True}
+    except Exception:
+        pass
+    try:
+        params2 = urllib.parse.urlencode({"domain": domain, "api_key": HUNTER_KEY, "limit": 5})
+        url2 = "https://api.hunter.io/v2/domain-search?" + params2
+        req2 = urllib.request.Request(url2)
+        with urllib.request.urlopen(req2, timeout=10) as resp2:
+            import json
+            data2 = json.loads(resp2.read())
+            pattern = data2.get("data", {}).get("pattern", "")
+            emails = data2.get("data", {}).get("emails", [])
+            if pattern:
+                fn = first_name.lower()
+                ln = last_name.lower()
+                guessed = pattern.replace("{first}", fn).replace("{last}", ln).replace("{f}", fn[0] if fn else "x").replace("{l}", ln[0] if ln else "x")
+                return {"email": guessed + "@" + domain, "confidence": 50, "found": True, "guessed": True}
+            if emails:
+                return {"email": emails[0]["value"], "confidence": emails[0].get("confidence", 0), "found": True}
+    except Exception:
+        pass
+    return {"email": None, "found": False}
