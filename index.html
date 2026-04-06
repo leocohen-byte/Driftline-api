@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Driftline — Fraud Intelligence for Digital Platforms</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -294,6 +295,40 @@ footer { border-top: 1px solid var(--border); padding: 44px 56px; display: flex;
 .upgrade-banner-text strong { color: #fff; }
 .upgrade-banner-btns { display: flex; gap: 10px; flex-shrink: 0; }
 
+
+/* ENHANCED DASHBOARD */
+.dash-section-title { font-size: 13px; font-weight: 700; color: var(--text4); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; font-family: 'DM Mono', monospace; }
+.chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+.chart-card-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.chart-card-title { font-size: 16px; font-weight: 700; color: #fff; }
+.chart-card-sub { font-size: 12px; color: var(--text4); font-family: 'DM Mono', monospace; }
+.chart-wrap { position: relative; height: 180px; }
+.kpi-trend { font-size: 11px; font-family: 'DM Mono', monospace; margin-top: 6px; }
+.kpi-trend.up { color: var(--red); }
+.kpi-trend.good { color: var(--green); }
+.flag-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.flag-pill { font-size: 11px; background: rgba(255,255,255,0.04); border: 1px solid var(--border2); border-radius: 6px; padding: 3px 9px; color: var(--text3); font-family: 'DM Mono', monospace; white-space: nowrap; }
+.flag-pill.network { background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.3); color: var(--purple); }
+.acct-expanded { padding: 14px 22px 18px; border-top: 1px solid var(--border); }
+.acct-meta { display: flex; gap: 24px; flex-wrap: wrap; }
+.acct-meta-item { font-size: 12px; color: var(--text4); font-family: 'DM Mono', monospace; }
+.acct-meta-item span { color: var(--text2); }
+.acct { flex-direction: column; align-items: stretch; cursor: pointer; }
+.acct-main { display: flex; align-items: center; justify-content: space-between; }
+.acct-l { display: flex; align-items: center; gap: 14px; flex: 1; }
+.network-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(167,139,250,0.12); border: 1px solid rgba(167,139,250,0.25); border-radius: 6px; padding: 3px 9px; font-size: 11px; color: var(--purple); font-family: 'DM Mono', monospace; font-weight: 600; }
+.summary-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px; }
+.summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; }
+.summary-card-label { font-size: 11px; color: var(--text4); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+.summary-card-val { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+.summary-card-sub { font-size: 12px; color: var(--text4); }
+.action-log { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; }
+.action-log-item { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text3); }
+.action-log-item:last-child { border-bottom: none; }
+.action-log-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.empty-state { text-align: center; padding: 48px 24px; color: var(--text4); font-family: 'DM Mono', monospace; font-size: 13px; }
+.empty-state .empty-icon { font-size: 32px; margin-bottom: 12px; }
+
 .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 12px; padding: 14px 20px; font-size: 14px; color: var(--text2); z-index: 9999; transform: translateY(100px); opacity: 0; transition: all 0.3s; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
 .toast.show { transform: translateY(0); opacity: 1; }
 .toast.success { border-color: rgba(16,217,160,0.3); color: var(--green); }
@@ -543,11 +578,41 @@ footer { border-top: 1px solid var(--border); padding: 44px 56px; display: flex;
         </div>
         <div class="dash-content">
           <div class="kpis">
-            <div class="kpi" style="--kc:var(--accent)"><div class="kpi-label">Total Scanned</div><div class="kpi-val" id="k-scanned">—</div><div class="kpi-sub">unique users analyzed</div></div>
-            <div class="kpi" style="--kc:var(--red)"><div class="kpi-label">Flagged</div><div class="kpi-val" style="color:var(--red)" id="k-flagged">—</div><div class="kpi-sub">require review</div></div>
+            <div class="kpi" style="--kc:var(--accent)"><div class="kpi-label">Total Scanned</div><div class="kpi-val" id="k-scanned">—</div><div class="kpi-sub">unique users analyzed</div><div class="kpi-trend" id="k-scanned-trend"></div></div>
+            <div class="kpi" style="--kc:var(--red)"><div class="kpi-label">Flagged</div><div class="kpi-val" style="color:var(--red)" id="k-flagged">—</div><div class="kpi-sub">accounts flagged total</div></div>
             <div class="kpi" style="--kc:var(--red)"><div class="kpi-label">Critical</div><div class="kpi-val" style="color:var(--red)" id="k-critical">—</div><div class="kpi-sub">suspend immediately</div></div>
             <div class="kpi" style="--kc:var(--accent)"><div class="kpi-label">Flag Rate</div><div class="kpi-val" style="color:var(--accent-light)" id="k-rate">—</div><div class="kpi-sub">of all accounts</div></div>
           </div>
+
+          <div class="chart-card">
+            <div class="chart-card-hdr">
+              <div>
+                <div class="chart-card-title">Fraud Detection Activity</div>
+                <div class="chart-card-sub">Last 7 days — flagged accounts per day</div>
+              </div>
+              <div id="chart-network-badge" style="display:none" class="network-badge">🌐 Network signals active</div>
+            </div>
+            <div class="chart-wrap"><canvas id="activity-chart"></canvas></div>
+          </div>
+
+          <div class="summary-row">
+            <div class="summary-card">
+              <div class="summary-card-label">High Risk</div>
+              <div class="summary-card-val" style="color:var(--orange)" id="k-high">—</div>
+              <div class="summary-card-sub">verify identity</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-card-label">Medium Risk</div>
+              <div class="summary-card-val" style="color:var(--yellow)" id="k-medium">—</div>
+              <div class="summary-card-sub">monitor closely</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-card-label">Network Matches</div>
+              <div class="summary-card-val" style="color:var(--purple)" id="k-network">—</div>
+              <div class="summary-card-sub">cross-platform flags</div>
+            </div>
+          </div>
+
           <div class="list-hdr"><h3>Recent Flagged Accounts</h3><span class="list-count" id="overview-count">loading...</span></div>
           <div class="acct-list" id="overview-list"><div class="loading"><div class="spinner"></div>Loading...</div></div>
         </div>
@@ -1038,30 +1103,98 @@ function renderAccount(a, showActions) {
   return '<div class="acct"><div class="acct-l"><div class="acct-av" style="background:' + color + '20;color:' + color + '">' + initial + '</div><div class="acct-info"><div class="acct-id">' + (a.user_id || 'unknown') + '</div><div class="acct-reason">' + reason + '</div></div></div><div class="acct-r"><div><div class="risk-num" style="color:' + color + '">' + (a.risk_score || 0) + '</div><div class="risk-sub">risk score</div></div><div class="badge b-' + level + '">' + level + '</div>' + actions + '</div></div>';
 }
 
+var _activityChart = null;
+
+function buildChart(accounts) {
+  var days = [];
+  var counts = [];
+  var now = new Date();
+  for (var d = 6; d >= 0; d--) {
+    var day = new Date(now);
+    day.setDate(now.getDate() - d);
+    var label = day.toLocaleDateString('en-US', { weekday: 'short' });
+    days.push(label);
+    var dayStart = new Date(day); dayStart.setHours(0,0,0,0);
+    var dayEnd = new Date(day); dayEnd.setHours(23,59,59,999);
+    var count = accounts.filter(function(a) {
+      if (!a.analyzed_at) return false;
+      var t = new Date(a.analyzed_at);
+      return t >= dayStart && t <= dayEnd;
+    }).length;
+    counts.push(count);
+  }
+  var ctx = document.getElementById('activity-chart');
+  if (!ctx) return;
+  if (_activityChart) { _activityChart.destroy(); }
+  _activityChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: days,
+      datasets: [{
+        label: 'Flagged Accounts',
+        data: counts,
+        backgroundColor: 'rgba(91,110,245,0.5)',
+        borderColor: 'rgba(91,110,245,0.9)',
+        borderWidth: 1,
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f0f1c', borderColor: '#2a2a45', borderWidth: 1, titleColor: '#fff', bodyColor: '#9898b8', callbacks: { label: function(c) { return c.raw + ' flagged'; } } } },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5a5a7a', font: { family: 'DM Mono', size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#5a5a7a', font: { family: 'DM Mono', size: 11 }, stepSize: 1 }, beginAtZero: true }
+      }
+    }
+  });
+}
+
 function loadDash() {
   document.getElementById('sidebar-mkt').textContent = mktName;
   document.getElementById('dash-mkt-label').textContent = mktName;
   var h = { 'X-API-Key': apiKey };
   Promise.all([
     fetch(API + '/stats', { headers: h }),
-    fetch(API + '/flagged?limit=5', { headers: h })
+    fetch(API + '/flagged?limit=50', { headers: h })
   ])
   .then(function(rs) { return Promise.all([rs[0].json(), rs[1].json()]); })
   .then(function(data) {
     var stats = data[0];
     var flagged = data[1];
     document.getElementById('live-status').textContent = 'live';
-    document.getElementById('k-scanned').textContent = stats.total_scanned || 0;
-    var accounts = flagged.results || [];
-    var critical = 0;
-    for (var i = 0; i < accounts.length; i++) { if (accounts[i].risk_level === 'critical') critical++; }
-    document.getElementById('k-flagged').textContent = flagged.total_flagged || accounts.length;
-    document.getElementById('k-critical').textContent = critical;
+    document.getElementById('k-scanned').textContent = (stats.total_scanned || 0).toLocaleString();
+    document.getElementById('k-flagged').textContent = (flagged.total_flagged || 0).toLocaleString();
+    document.getElementById('k-critical').textContent = (stats.critical || 0).toLocaleString();
     document.getElementById('k-rate').textContent = (stats.flag_rate || 0) + '%';
+    if (document.getElementById('k-high')) document.getElementById('k-high').textContent = (stats.high || 0).toLocaleString();
+    if (document.getElementById('k-medium')) document.getElementById('k-medium').textContent = (stats.medium || 0).toLocaleString();
+
+    var accounts = flagged.results || [];
+
+    // Count network matches
+    var networkCount = 0;
+    accounts.forEach(function(a) {
+      var flags = [];
+      try { flags = typeof a.flags === 'string' ? JSON.parse(a.flags.replace(/'/g,'"')) : (a.flags || []); } catch(e) {}
+      if (flags.some(function(f) { return f && f.toString().toLowerCase().indexOf('network') > -1; })) networkCount++;
+    });
+    if (document.getElementById('k-network')) document.getElementById('k-network').textContent = networkCount;
+    if (networkCount > 0 && document.getElementById('chart-network-badge')) {
+      document.getElementById('chart-network-badge').style.display = 'inline-flex';
+    }
+
+    buildChart(accounts);
+
+    var recent = accounts.slice(0, 8);
     document.getElementById('overview-count').textContent = accounts.length + ' accounts';
-    if (!accounts.length) { document.getElementById('overview-list').innerHTML = '<div class="loading">No flagged accounts — your platform is clean ✓</div>'; return; }
+    if (!recent.length) {
+      document.getElementById('overview-list').innerHTML = '<div class="empty-state"><div class="empty-icon">✓</div>No flagged accounts yet — your platform is clean.</div>';
+      return;
+    }
     var html = '';
-    for (var j = 0; j < accounts.length; j++) { html += renderAccount(accounts[j], false); }
+    for (var j = 0; j < recent.length; j++) { html += renderAccount(recent[j], false); }
     document.getElementById('overview-list').innerHTML = html;
   })
   .catch(function() {
