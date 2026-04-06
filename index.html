@@ -283,6 +283,17 @@ footer { border-top: 1px solid var(--border); padding: 44px 56px; display: flex;
 .team-role { font-size: 13px; color: var(--text4); }
 
 /* TOAST */
+
+.usage-bar-wrap { background: var(--border); border-radius: 100px; height: 8px; margin: 10px 0 6px; overflow: hidden; }
+.usage-bar { height: 100%; border-radius: 100px; background: var(--accent); transition: width 0.6s ease; }
+.usage-bar.warning { background: var(--orange, #FF8C42); }
+.usage-bar.danger { background: var(--red); }
+.upgrade-banner { background: linear-gradient(135deg, rgba(91,110,245,0.15), rgba(167,139,250,0.1)); border: 1px solid rgba(91,110,245,0.3); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; display: none; }
+.upgrade-banner.show { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.upgrade-banner-text { font-size: 14px; color: var(--text2); }
+.upgrade-banner-text strong { color: #fff; }
+.upgrade-banner-btns { display: flex; gap: 10px; flex-shrink: 0; }
+
 .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 12px; padding: 14px 20px; font-size: 14px; color: var(--text2); z-index: 9999; transform: translateY(100px); opacity: 0; transition: all 0.3s; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
 .toast.show { transform: translateY(0); opacity: 1; }
 .toast.success { border-color: rgba(16,217,160,0.3); color: var(--green); }
@@ -433,7 +444,7 @@ footer { border-top: 1px solid var(--border); padding: 44px 56px; display: flex;
           <li><span class="tick">✓</span> Priority support</li>
           <li><span class="tick">✓</span> Custom risk thresholds</li>
         </ul>
-        <button class="btn btn-primary" style="width:100%" onclick="go('auth')">Start free trial</button>
+        <button class="btn btn-primary" style="width:100%" onclick="window.open('https://buy.stripe.com/fZu4gz90ng3u4gr8ce73G00','_blank')">Upgrade to Growth →</button>
       </div>
       <div class="plan">
         <div class="plan-tier">Enterprise</div>
@@ -446,7 +457,7 @@ footer { border-top: 1px solid var(--border); padding: 44px 56px; display: flex;
           <li><span class="tick">✓</span> Dedicated support</li>
           <li><span class="tick">✓</span> Custom integrations</li>
         </ul>
-        <button class="btn btn-secondary" style="width:100%" onclick="go('auth')">Contact sales</button>
+        <button class="btn btn-secondary" style="width:100%" onclick="window.open('https://buy.stripe.com/eVq14n4K76sU4gr64673G01','_blank')">Upgrade to Enterprise →</button>
       </div>
     </div>
   </div>
@@ -582,12 +593,13 @@ footer { border-top: 1px solid var(--border); padding: 44px 56px; display: flex;
             <div class="info-card">
               <div class="info-card-label">Current Plan</div>
               <div class="info-card-val" id="acct-plan">Free</div>
-              <div class="info-card-sub"><a onclick="scrollTo2('pricing')" style="color:var(--accent-light);cursor:pointer;text-decoration:none">Upgrade plan →</a></div>
+              <div class="info-card-sub" style="display:flex;gap:10px;flex-wrap:wrap"><a href="https://buy.stripe.com/fZu4gz90ng3u4gr8ce73G00" target="_blank" style="color:var(--accent-light);cursor:pointer;text-decoration:none">Growth $499.99 →</a><a href="https://buy.stripe.com/eVq14n4K76sU4gr64673G01" target="_blank" style="color:var(--purple);cursor:pointer;text-decoration:none">Enterprise $999.99 →</a></div>
             </div>
             <div class="info-card">
               <div class="info-card-label">Events This Month</div>
               <div class="info-card-val" id="acct-events">—</div>
-              <div class="info-card-sub">of 10,000 included</div>
+              <div class="usage-bar-wrap"><div class="usage-bar" id="usage-bar" style="width:0%"></div></div>
+              <div class="info-card-sub"><span id="acct-limit">10,000</span> events included · <span id="acct-pct">0</span>% used</div>
             </div>
             <div class="info-card">
               <div class="info-card-label">Flagged Accounts</div>
@@ -1104,6 +1116,43 @@ function dismissAccount(userId, action) {
 function loadAccount() {
   document.getElementById('acct-mkt').textContent = mktName;
   document.getElementById('acct-plan').textContent = isDemo ? 'Demo' : 'Free';
+      // Fetch real account info
+      if (!isDemo && window._apiKey) {
+        fetch(API + '/account', { headers: { 'X-API-Key': window._apiKey } })
+          .then(r => r.json()).then(d => {
+            if (d.tier) {
+              const tierLabel = { free: 'Free', growth: 'Growth', enterprise: 'Enterprise' }[d.tier] || d.tier;
+              document.getElementById('acct-plan').textContent = tierLabel;
+            }
+            if (d.events_this_month !== undefined) {
+              document.getElementById('acct-events').textContent = d.events_this_month.toLocaleString();
+            }
+            if (d.limit) {
+              document.getElementById('acct-limit').textContent = d.limit.toLocaleString();
+            }
+            if (d.usage_pct !== undefined) {
+              const pct = d.usage_pct;
+              document.getElementById('acct-pct').textContent = Math.round(pct);
+              const bar = document.getElementById('usage-bar');
+              bar.style.width = Math.min(pct, 100) + '%';
+              if (pct >= 100) { bar.className = 'usage-bar danger'; }
+              else if (pct >= 80) { bar.className = 'usage-bar warning'; }
+              // Show upgrade banner
+              const banner = document.getElementById('upgrade-banner');
+              const bannerMsg = document.getElementById('upgrade-banner-msg');
+              const bannerSub = document.getElementById('upgrade-banner-sub');
+              if (pct >= 100 && d.tier === 'free') {
+                banner.classList.add('show');
+                bannerMsg.textContent = "You've hit your 10,000 event limit.";
+                bannerSub.textContent = " Upgrade now to keep Driftline running.";
+              } else if (pct >= 80 && d.tier === 'free') {
+                banner.classList.add('show');
+                bannerMsg.textContent = "You're at " + Math.round(pct) + "% of your free tier limit.";
+                bannerSub.textContent = " Upgrade before you run out.";
+              }
+            }
+          }).catch(() => {});
+      }
   document.getElementById('display-key').textContent = 'dk_' + '•'.repeat(32);
   keyVisible = false;
   var h = { 'X-API-Key': apiKey };
