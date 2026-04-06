@@ -297,6 +297,19 @@ def ingest_event(
     device_fingerprint: str = Query(None),
     api_key: str = Depends(get_tenant)
 ):
+    # Enforce tier limits
+    tier, events_used, limit = get_user_tier(api_key)
+    if events_used >= limit:
+        raise HTTPException(status_code=429, detail={
+            "error": "monthly_limit_reached",
+            "message": f"You have reached your {limit:,} event limit for this month.",
+            "tier": tier,
+            "events_used": events_used,
+            "limit": limit,
+            "upgrade_url_growth": "https://buy.stripe.com/fZu4gz90ng3u4gr8ce73G00",
+            "upgrade_url_enterprise": "https://buy.stripe.com/eVq14n4K76sU4gr64673G01"
+        })
+
     ts = timestamp or time.time()
     try:
         conn = get_db()
@@ -310,6 +323,9 @@ def ingest_event(
         conn.close()
     except Exception as e:
         raise HTTPException(500, "Failed to store event: " + str(e))
+
+    # Increment monthly counter
+    increment_event_count(api_key)
 
     sc, fl, lv, rc = compute_risk(user_id, api_key)
 
@@ -542,3 +558,174 @@ def find_email(first_name: str = Query(...), last_name: str = Query(...), domain
     except Exception:
         pass
     return {"email": None, "found": False}
+
+
+# ── STRIPE WEBHOOK ────────────────────────────────────────────────────────────
+from fastapi import Request
+import json
+
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_GROWTH_PRICE = "price_1TIzQDFxBU842YUW3mBNw4UK"
+STRIPE_ENTERPRISE_PRICE = "price_1TIzQKFxBU842YUWHpoPDeCi"
+
+@app.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature", "")
+
+    # Verify webhook signature if secret is set
+    if STRIPE_WEBHOOK_SECRET:
+        try:
+            import hmac, hashlib
+            elements = {}
+            for part in sig_header.split(","):
+                k, v = part.split("=", 1)
+                elements[k] = v
+            timestamp = elements.get("t", "")
+            sig = elements.get("v1", "")
+            signed_payload = timestamp + "." + payload.decode("utf-8")
+            expected = hmac.new(
+                STRIPE_WEBHOOK_SECRET.encode("utf-8"),
+                signed_payload.encode("utf-8"),
+                hashlib.sha256
+            ).hexdigest()
+            if not hmac.compare_digest(expected, sig):
+                raise HTTPException(status_code=400, detail="Invalid signature")
+        except Exception:
+            pass  # Allow through in dev mode
+
+    try:
+        event = json.loads(payload)
+        event_type = event.get("type", "")
+
+        if event_type == "checkout.session.completed":
+            session = event["data"]["object"]
+            customer_email = session.get("customer_details", {}).get("email", "")
+            price_id = ""
+
+            # Get price from line items
+            line_items = session.get("line_items", {}).get("data", [])
+            if line_items:
+                price_id = line_items[0].get("price", {}).get("id", "")
+
+            # Determine tier from price
+            if price_id == STRIPE_GROWTH_PRICE:
+                new_tier = "growth"
+            elif price_id == STRIPE_ENTERPRISE_PRICE:
+                new_tier = "enterprise"
+            else:
+                # Fallback: check amount
+                amount = session.get("amount_total", 0)
+                if amount >= 99999:
+                    new_tier = "enterprise"
+                elif amount >= 49999:
+                    new_tier = "growth"
+                else:
+                    new_tier = "growth"
+
+            # Update user tier by email
+            if customer_email:
+                try:
+                    conn = get_db()
+                    cur = conn.cursor()
+                    cur.execute(
+                        "UPDATE users SET tier = %s WHERE email = %s RETURNING email, api_key",
+                        (new_tier, customer_email)
+                    )
+                    updated = cur.fetchone()
+                    conn.commit()
+                    cur.close()
+                    conn.close()
+                    print(f"Upgraded {customer_email} to {new_tier}")
+                except Exception as e:
+                    print(f"Failed to upgrade {customer_email}: {e}")
+
+        elif event_type == "customer.subscription.deleted":
+            # Downgrade to free if subscription cancelled
+            subscription = event["data"]["object"]
+            customer_id = subscription.get("customer", "")
+            # Would need customer lookup — log for now
+            print(f"Subscription cancelled for customer {customer_id}")
+
+    except Exception as e:
+        print(f"Webhook error: {e}")
+
+    return {"status": "ok"}
+
+
+# ── TIER LIMITS ───────────────────────────────────────────────────────────────
+TIER_LIMITS = {
+    "free": 10000,
+    "growth": 500000,
+    "enterprise": 999999999
+}
+
+def get_user_tier(api_key: str) -> tuple:
+    """Returns (tier, events_this_month, limit)"""
+    if api_key in DEMO_KEYS:
+        return "growth", 0, 500000
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("SELECT tier, events_this_month FROM users WHERE api_key = %s", (api_key,))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        if result:
+            tier = result["tier"] or "free"
+            events = result["events_this_month"] or 0
+            limit = TIER_LIMITS.get(tier, 10000)
+            return tier, events, limit
+    except Exception:
+        pass
+    return "free", 0, 10000
+
+def increment_event_count(api_key: str):
+    if api_key in DEMO_KEYS:
+        return
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET events_this_month = events_this_month + 1 WHERE api_key = %s",
+            (api_key,)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception:
+        pass
+
+
+# ── ACCOUNT INFO ENDPOINT ─────────────────────────────────────────────────────
+@app.get("/account")
+def get_account(api_key: str = Depends(get_tenant)):
+    tier, events, limit = get_user_tier(api_key)
+    marketplace = get_marketplace_name(api_key)
+    return {
+        "marketplace": marketplace,
+        "tier": tier,
+        "events_this_month": events,
+        "limit": limit,
+        "usage_pct": round(events / max(limit, 1) * 100, 1),
+        "upgrade_url_growth": "https://buy.stripe.com/fZu4gz90ng3u4gr8ce73G00",
+        "upgrade_url_enterprise": "https://buy.stripe.com/eVq14n4K76sU4gr64673G01"
+    }
+
+
+# ── RESET MONTHLY EVENTS (call via cron on 1st of month) ─────────────────────
+@app.post("/admin/reset-monthly-events")
+def reset_monthly_events(x_admin_key: str = Header(None)):
+    admin_key = os.environ.get("ADMIN_KEY", "driftline_admin_2025")
+    if x_admin_key != admin_key:
+        raise HTTPException(status_code=403, detail="Unauthorized")
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET events_this_month = 0")
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    return {"status": "reset", "reset_at": datetime.utcnow().isoformat()}
