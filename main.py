@@ -72,6 +72,30 @@ def init_db():
             UNIQUE(api_key, user_id)
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS outcomes (
+            id SERIAL PRIMARY KEY,
+            api_key TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            platform TEXT NOT NULL,
+            outcome TEXT NOT NULL,
+            confirmed_at TIMESTAMP DEFAULT NOW(),
+            notes TEXT
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS network_flags (
+            id SERIAL PRIMARY KEY,
+            ip_address TEXT,
+            device_fingerprint TEXT,
+            user_id TEXT NOT NULL,
+            platform TEXT NOT NULL,
+            api_key TEXT NOT NULL,
+            risk_score FLOAT,
+            outcome TEXT DEFAULT 'flagged',
+            flagged_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
     conn.commit()
     cur.close()
     conn.close()
@@ -515,6 +539,137 @@ def clear_account(user_id: str, action: str = Query("reviewed"), api_key: str = 
     except Exception as e:
         raise HTTPException(500, str(e))
     return {"user_id": user_id, "action": action, "status": "success"}
+
+
+@app.post("/outcome")
+def record_outcome(
+    user_id: str = Query(...),
+    outcome: str = Query(...),
+    notes: str = Query(None),
+    api_key: str = Depends(get_tenant)
+):
+    valid_outcomes = ["confirmed_fraud", "false_positive", "suspended"]
+    if outcome not in valid_outcomes:
+        raise HTTPException(400, f"Invalid outcome. Must be one of: {valid_outcomes}")
+    platform = get_marketplace_name(api_key)
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        # Store outcome
+        cur.execute("""
+            INSERT INTO outcomes (api_key, user_id, platform, outcome, notes)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (api_key, user_id, platform, outcome, notes))
+        # If confirmed fraud, store in network_flags for cross-platform intelligence
+        if outcome in ["confirmed_fraud", "suspended"]:
+            cur.execute("""
+                SELECT ip_address, device_fingerprint
+                FROM events
+                WHERE api_key = %s AND user_id = %s
+                ORDER BY created_at DESC LIMIT 1
+            """, (api_key, user_id))
+            row = cur.fetchone()
+            ip = row["ip_address"] if row else None
+            fp = row["device_fingerprint"] if row else None
+            cur.execute("""
+                SELECT risk_score FROM flagged_accounts
+                WHERE api_key = %s AND user_id = %s
+            """, (api_key, user_id))
+            fa = cur.fetchone()
+            risk = float(fa["risk_score"]) if fa else 99.0
+            cur.execute("""
+                INSERT INTO network_flags (ip_address, device_fingerprint, user_id, platform, api_key, risk_score, outcome)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (ip, fp, user_id, platform, api_key, risk, outcome))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        raise HTTPException(500, "Failed to record outcome: " + str(e))
+    return {
+        "user_id": user_id,
+        "outcome": outcome,
+        "platform": platform,
+        "recorded_at": datetime.utcnow().isoformat(),
+        "status": "success"
+    }
+
+
+@app.get("/network/stats")
+def get_network_stats(api_key: str = Depends(get_tenant)):
+    try:
+        conn = get_db()
+        cur = conn.cursor()
+        # Total unique flagged fingerprints across all platforms
+        cur.execute("""
+            SELECT COUNT(DISTINCT device_fingerprint) as unique_fingerprints
+            FROM network_flags
+            WHERE device_fingerprint IS NOT NULL
+        """)
+        unique_fps = cur.fetchone()["unique_fingerprints"]
+        # Total unique IPs flagged
+        cur.execute("""
+            SELECT COUNT(DISTINCT ip_address) as unique_ips
+            FROM network_flags
+            WHERE ip_address IS NOT NULL
+        """)
+        unique_ips = cur.fetchone()["unique_ips"]
+        # Total platforms in network (distinct api_keys with at least 1 event)
+        cur.execute("""
+            SELECT COUNT(DISTINCT api_key) as platforms
+            FROM events
+        """)
+        total_platforms = cur.fetchone()["platforms"]
+        # Cross-platform matches — fingerprints seen on 2+ platforms
+        cur.execute("""
+            SELECT COUNT(*) as cross_matches FROM (
+                SELECT device_fingerprint
+                FROM network_flags
+                WHERE device_fingerprint IS NOT NULL
+                GROUP BY device_fingerprint
+                HAVING COUNT(DISTINCT platform) > 1
+            ) sub
+        """)
+        cross_fp = cur.fetchone()["cross_matches"]
+        # Cross-platform IP matches
+        cur.execute("""
+            SELECT COUNT(*) as cross_ip_matches FROM (
+                SELECT ip_address
+                FROM network_flags
+                WHERE ip_address IS NOT NULL
+                GROUP BY ip_address
+                HAVING COUNT(DISTINCT platform) > 1
+            ) sub
+        """)
+        cross_ip = cur.fetchone()["cross_ip_matches"]
+        # Total confirmed fraud outcomes
+        cur.execute("""
+            SELECT COUNT(*) as confirmed FROM outcomes
+            WHERE outcome = 'confirmed_fraud'
+        """)
+        confirmed = cur.fetchone()["confirmed"]
+        # Total events scored across all platforms
+        cur.execute("SELECT COUNT(*) as total FROM events")
+        total_events = cur.fetchone()["total"]
+        cur.close()
+        conn.close()
+    except Exception as e:
+        raise HTTPException(500, "Failed to fetch network stats: " + str(e))
+    return {
+        "total_platforms_in_network": total_platforms,
+        "total_events_scored": total_events,
+        "unique_flagged_fingerprints": unique_fps,
+        "unique_flagged_ips": unique_ips,
+        "cross_platform_fingerprint_matches": cross_fp,
+        "cross_platform_ip_matches": cross_ip,
+        "total_cross_platform_catches": cross_fp + cross_ip,
+        "confirmed_fraud_outcomes": confirmed,
+        "network_effectiveness": round(
+            (cross_fp + cross_ip) / max(unique_fps + unique_ips, 1) * 100, 1
+        ),
+        "generated_at": datetime.utcnow().isoformat()
+    }
+
 
 @app.get("/find-email")
 def find_email(first_name: str = Query(...), last_name: str = Query(...), domain: str = Query(...)):
