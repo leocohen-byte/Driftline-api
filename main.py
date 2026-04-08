@@ -145,64 +145,149 @@ def get_marketplace_name(api_key: str) -> str:
         return "Unknown"
 
 def compute_risk(user_id: str, api_key: str):
+    """
+    Multi-signal fraud scoring engine.
+    Analyzes behavioral patterns across multiple time windows.
+    Returns (score 0-99, flags list, level, recommendation)
+    """
     try:
         conn = get_db()
         cur = conn.cursor()
         now = time.time()
-        hour_ago = now - 3600
+
+        # Pull events across multiple time windows
         cur.execute("""
-            SELECT conversation_id, reply_speed, timestamp
+            SELECT conversation_id, reply_speed, message_length,
+                   timestamp, ip_address, device_fingerprint
             FROM events
-            WHERE api_key = %s AND user_id = %s AND timestamp > %s
+            WHERE api_key = %s AND user_id = %s
             ORDER BY timestamp DESC
-        """, (api_key, user_id, hour_ago))
-        recent = cur.fetchall()
+            LIMIT 500
+        """, (api_key, user_id))
+        all_events = cur.fetchall()
         cur.close()
         conn.close()
     except Exception:
-        recent = []
+        all_events = []
 
-    if not recent:
+    if not all_events:
         return 0, [], "low", "No action required"
 
-    s = 0
+    s = 0.0
     f = []
-    mc = len(recent)
-    if mc > 30:
-        f.append("Sent " + str(mc) + " messages in 1 hour")
-        s += 35
-    elif mc > 15:
-        f.append("High message volume: " + str(mc) + " msg/hr")
-        s += 18
+    now = time.time()
 
-    convos = set(e["conversation_id"] for e in recent)
-    uc = len(convos)
-    if uc > 20:
-        f.append("Opened " + str(uc) + " simultaneous conversations")
-        s += 30
-    elif uc > 10:
-        f.append("High conversation count: " + str(uc))
+    # Time window buckets
+    events_1h  = [e for e in all_events if e["timestamp"] > now - 3600]
+    events_24h = [e for e in all_events if e["timestamp"] > now - 86400]
+    events_7d  = [e for e in all_events if e["timestamp"] > now - 604800]
+
+    # ── SIGNAL 1: Message volume (1 hour) ──────────────────────────────────
+    mc_1h = len(events_1h)
+    if mc_1h > 50:
+        f.append(f"Extreme message volume: {mc_1h} messages in 1 hour")
+        s += 40
+    elif mc_1h > 25:
+        f.append(f"High message volume: {mc_1h} messages in 1 hour")
+        s += 22
+    elif mc_1h > 12:
+        f.append(f"Elevated message volume: {mc_1h} messages in 1 hour")
+        s += 10
+
+    # ── SIGNAL 2: Simultaneous conversations (1 hour) ──────────────────────
+    convos_1h = set(e["conversation_id"] for e in events_1h)
+    uc = len(convos_1h)
+    if uc > 25:
+        f.append(f"Mass outreach: {uc} simultaneous conversations")
+        s += 35
+    elif uc > 15:
+        f.append(f"High conversation spread: {uc} open conversations")
+        s += 20
+    elif uc > 8:
+        f.append(f"Elevated conversation count: {uc} conversations")
+        s += 8
+
+    # ── SIGNAL 3: Reply speed analysis ─────────────────────────────────────
+    speeds = [e["reply_speed"] for e in events_1h
+              if e["reply_speed"] is not None and 0 < e["reply_speed"] < 600]
+    if speeds:
+        avg_speed = sum(speeds) / len(speeds)
+        ultra_fast = [s2 for s2 in speeds if s2 < 1.5]
+        pct_ultra  = len(ultra_fast) / len(speeds)
+
+        if avg_speed < 1.5 and len(speeds) >= 5:
+            f.append(f"Bot-like reply speed: avg {round(avg_speed,1)}s across {len(speeds)} messages")
+            s += 28
+        elif avg_speed < 3.0 and len(speeds) >= 5:
+            f.append(f"Unusually fast replies: avg {round(avg_speed,1)}s")
+            s += 15
+        elif pct_ultra > 0.6 and len(speeds) >= 5:
+            f.append(f"{int(pct_ultra*100)}% of replies sent in under 1.5 seconds")
+            s += 18
+
+    # ── SIGNAL 4: Message length uniformity (copy-paste detection) ─────────
+    lengths = [e["message_length"] for e in events_1h
+               if e["message_length"] is not None and e["message_length"] > 0]
+    if len(lengths) >= 8:
+        avg_len = sum(lengths) / len(lengths)
+        variance = sum((l - avg_len) ** 2 for l in lengths) / len(lengths)
+        std_dev = variance ** 0.5
+        coeff_variation = std_dev / max(avg_len, 1)
+        if coeff_variation < 0.08 and avg_len > 20:
+            f.append(f"Copy-paste pattern detected: message length variance {round(coeff_variation*100,1)}%")
+            s += 22
+        elif coeff_variation < 0.15 and avg_len > 20:
+            f.append(f"Suspiciously uniform message lengths (possible template use)")
+            s += 10
+
+    # ── SIGNAL 5: Conversation-to-message ratio (spray pattern) ────────────
+    if mc_1h >= 5 and uc >= 3:
+        msgs_per_convo = mc_1h / uc
+        if msgs_per_convo < 1.5:
+            f.append(f"Spray pattern: {mc_1h} messages across {uc} conversations ({round(msgs_per_convo,1)} msg/convo)")
+            s += 20
+        elif msgs_per_convo < 2.5 and uc > 10:
+            f.append(f"Broadcast pattern: low engagement across many conversations")
+            s += 10
+
+    # ── SIGNAL 6: Activity acceleration (ramping up fast) ──────────────────
+    events_15m = [e for e in events_1h if e["timestamp"] > now - 900]
+    events_60m_old = [e for e in events_1h if e["timestamp"] <= now - 900]
+    if len(events_15m) > 10 and len(events_60m_old) < 3:
+        f.append(f"Sudden activity spike: {len(events_15m)} messages in last 15 minutes")
         s += 15
 
-    speeds = [e["reply_speed"] for e in recent if e["reply_speed"] and e["reply_speed"] > 0]
-    if speeds and sum(speeds) / len(speeds) < 3:
-        f.append("Bot-like reply speed: avg " + str(round(sum(speeds) / len(speeds), 1)) + "s")
-        s += 20
+    # ── SIGNAL 7: 24h sustained volume (not a one-off) ─────────────────────
+    convos_24h = set(e["conversation_id"] for e in events_24h)
+    if len(convos_24h) > 40:
+        f.append(f"Sustained mass outreach: {len(convos_24h)} conversations in 24 hours")
+        s += 15
+    elif len(convos_24h) > 20:
+        f.append(f"High 24h activity: {len(convos_24h)} conversations today")
+        s += 8
 
-    s = min(s, 99)
+    # ── SIGNAL 8: Night-time blasting (timezone evasion) ───────────────────
+    import datetime
+    if events_1h:
+        latest = datetime.datetime.utcfromtimestamp(events_1h[0]["timestamp"])
+        hour_utc = latest.hour
+        if (hour_utc >= 1 and hour_utc <= 5) and mc_1h > 15:
+            f.append(f"High volume activity during off-hours (UTC {hour_utc}:00)")
+            s += 10
+
+    # Cap at 99
+    s = min(round(s), 99)
+
     if s >= 75: return s, f, "critical", "Suspend account immediately"
-    elif s >= 55: return s, f, "high", "Limit messaging and verify identity"
-    elif s >= 35: return s, f, "medium", "Monitor closely"
+    elif s >= 55: return s, f, "high",     "Limit messaging and verify identity"
+    elif s >= 35: return s, f, "medium",   "Monitor closely"
     return s, f, "low", "No action required"
 
 def seed_demo_data():
-    demo_users = [
-        ("scammer_001", 45, 1.5),
-        ("scammer_002", 38, 2.0),
-        ("scammer_003", 52, 1.2),
-        ("user_medium_01", 22, 45.0),
-        ("user_normal_01", 5, 180.0),
-    ]
+    """
+    Seeds realistic demo data showing Driftline catching real scammer patterns.
+    Each demo user represents a distinct fraud archetype.
+    """
     try:
         conn = get_db()
         cur = conn.cursor()
@@ -213,35 +298,130 @@ def seed_demo_data():
             conn.close()
             return
         now = time.time()
-        for uid, mc, speed in demo_users:
-            bt = now - random.randint(1800, 7200)
-            cvs = ["c" + str(random.randint(1000, 9999)) for _ in range(random.randint(10, 25))]
-            for _ in range(mc):
-                bt += random.uniform(0.5, 3) if speed < 10 else random.uniform(30, 300)
-                cur.execute("""
-                    INSERT INTO events (api_key, user_id, conversation_id, platform, timestamp, reply_speed)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """, (DEMO_KEY_ALPHA, uid, random.choice(cvs), "driftline", bt, speed + random.uniform(-0.5, 0.5)))
+
+        # ── ARCHETYPE 1: Mass outreach scammer ──────────────────────────────
+        # Fake seller blasting 60 buyers simultaneously with copy-paste messages
+        uid1 = "scammer_mass_001"
+        convos1 = ["conv_" + str(i) for i in range(62)]
+        t = now - 3200
+        for i in range(68):
+            t += random.uniform(0.8, 2.1)  # bot-like speed
+            ml = random.randint(118, 124)  # uniform length = copy paste
+            cur.execute("""
+                INSERT INTO events (api_key, user_id, conversation_id, platform, timestamp,
+                    reply_speed, message_length, ip_address, device_fingerprint)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (DEMO_KEY_ALPHA, uid1, random.choice(convos1), "demo_marketplace",
+                  t, random.uniform(0.9, 2.0), ml, "45.152.66.91", "fp_a1b2c3d4e5f6"))
+
+        # ── ARCHETYPE 2: Bot-speed spammer ──────────────────────────────────
+        # Automated account, sub-second replies, many conversations
+        uid2 = "scammer_bot_002"
+        convos2 = ["bot_conv_" + str(i) for i in range(35)]
+        t = now - 2800
+        for i in range(45):
+            t += random.uniform(0.3, 1.1)  # sub-second = bot
+            cur.execute("""
+                INSERT INTO events (api_key, user_id, conversation_id, platform, timestamp,
+                    reply_speed, message_length, ip_address, device_fingerprint)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (DEMO_KEY_ALPHA, uid2, random.choice(convos2), "demo_marketplace",
+                  t, random.uniform(0.3, 1.1), random.randint(85, 210),
+                  "185.220.101.33", "fp_z9y8x7w6v5u4"))
+
+        # ── ARCHETYPE 3: Fake rental host (spray & pray) ────────────────────
+        # Opens many conversations, sends one message and ghosts
+        uid3 = "scammer_rental_003"
+        convos3 = ["rental_" + str(i) for i in range(28)]
+        t = now - 1800
+        for i in range(31):
+            t += random.uniform(1.5, 4.0)
+            cur.execute("""
+                INSERT INTO events (api_key, user_id, conversation_id, platform, timestamp,
+                    reply_speed, message_length, ip_address, device_fingerprint)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (DEMO_KEY_ALPHA, uid3, convos3[i % len(convos3)], "demo_marketplace",
+                  t, random.uniform(1.5, 3.5), random.randint(140, 148),
+                  "91.108.4.17", "fp_m3n4o5p6q7r8"))
+
+        # ── ARCHETYPE 4: Suspicious but borderline ──────────────────────────
+        uid4 = "user_suspicious_004"
+        convos4 = ["susp_" + str(i) for i in range(12)]
+        t = now - 3000
+        for i in range(22):
+            t += random.uniform(5, 45)
+            cur.execute("""
+                INSERT INTO events (api_key, user_id, conversation_id, platform, timestamp,
+                    reply_speed, message_length)
+                VALUES (%s,%s,%s,%s,%s,%s,%s)
+            """, (DEMO_KEY_ALPHA, uid4, random.choice(convos4), "demo_marketplace",
+                  t, random.uniform(4, 30), random.randint(50, 200)))
+
+        # ── ARCHETYPE 5: Normal active seller ───────────────────────────────
+        uid5 = "user_normal_005"
+        convos5 = ["normal_" + str(i) for i in range(4)]
+        t = now - 7200
+        for i in range(8):
+            t += random.uniform(120, 600)
+            cur.execute("""
+                INSERT INTO events (api_key, user_id, conversation_id, platform, timestamp,
+                    reply_speed, message_length)
+                VALUES (%s,%s,%s,%s,%s,%s,%s)
+            """, (DEMO_KEY_ALPHA, uid5, random.choice(convos5), "demo_marketplace",
+                  t, random.uniform(60, 400), random.randint(30, 280)))
+
+        # ── ARCHETYPE 6: Normal buyer ────────────────────────────────────────
+        uid6 = "user_buyer_006"
+        t = now - 4800
+        for i in range(5):
+            t += random.uniform(300, 1800)
+            cur.execute("""
+                INSERT INTO events (api_key, user_id, conversation_id, platform, timestamp,
+                    reply_speed, message_length)
+                VALUES (%s,%s,%s,%s,%s,%s,%s)
+            """, (DEMO_KEY_ALPHA, uid6, "buyer_conv_001", "demo_marketplace",
+                  t, random.uniform(120, 900), random.randint(20, 150)))
+
         conn.commit()
-        for uid, mc, speed in demo_users:
+
+        # Now score all users and write flagged accounts
+        for uid in [uid1, uid2, uid3, uid4, uid5, uid6]:
             sc, fl, lv, rc = compute_risk(uid, DEMO_KEY_ALPHA)
+            total_msgs = len([e for e in [uid1, uid2, uid3, uid4, uid5, uid6] if e == uid])
+            cur.execute("SELECT COUNT(*) as c FROM events WHERE api_key=%s AND user_id=%s",
+                       (DEMO_KEY_ALPHA, uid))
+            total_msgs = cur.fetchone()["c"]
             if sc >= 35:
                 cur.execute("""
-                    INSERT INTO flagged_accounts (api_key, user_id, platform, risk_score, risk_level, flag_reason, flags, recommendation, total_messages)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO flagged_accounts
+                        (api_key, user_id, platform, risk_score, risk_level,
+                         flag_reason, flags, recommendation, total_messages)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     ON CONFLICT (api_key, user_id) DO UPDATE SET
-                        risk_score = EXCLUDED.risk_score,
-                        risk_level = EXCLUDED.risk_level,
-                        flag_reason = EXCLUDED.flag_reason,
-                        flags = EXCLUDED.flags,
-                        recommendation = EXCLUDED.recommendation,
-                        total_messages = EXCLUDED.total_messages,
-                        analyzed_at = NOW()
-                """, (DEMO_KEY_ALPHA, uid, "driftline", sc, lv, fl[0] if fl else None, str(fl), rc, mc))
+                        risk_score=EXCLUDED.risk_score,
+                        risk_level=EXCLUDED.risk_level,
+                        flag_reason=EXCLUDED.flag_reason,
+                        flags=EXCLUDED.flags,
+                        recommendation=EXCLUDED.recommendation,
+                        total_messages=EXCLUDED.total_messages,
+                        analyzed_at=NOW()
+                """, (DEMO_KEY_ALPHA, uid, "demo_marketplace", sc, lv,
+                      fl[0] if fl else None, str(fl), rc, total_msgs))
+
+        # Seed network_signals for cross-platform demo
+        cur.execute("""
+            INSERT INTO network_signals (ip_address, device_fingerprint, user_id, platform, api_key, risk_score)
+            VALUES (%s,%s,%s,%s,%s,%s)
+        """, ("45.152.66.91", "fp_a1b2c3d4e5f6", "scammer_mass_001", "rover_demo", "dk_beta_marketplace_002", 91.0))
+        cur.execute("""
+            INSERT INTO network_signals (ip_address, device_fingerprint, user_id, platform, api_key, risk_score)
+            VALUES (%s,%s,%s,%s,%s,%s)
+        """, ("185.220.101.33", "fp_z9y8x7w6v5u4", "scammer_bot_002", "turo_demo", "dk_beta_marketplace_002", 88.0))
+
         conn.commit()
         cur.close()
         conn.close()
-        print("Demo data seeded successfully")
+        print("Demo data seeded successfully with realistic scammer archetypes")
     except Exception as e:
         print("Seed error:", e)
 
