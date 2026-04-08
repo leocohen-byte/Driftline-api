@@ -613,6 +613,35 @@ footer { border-top: 1px solid var(--border); padding: 44px 56px; display: flex;
             </div>
           </div>
 
+          <!-- NETWORK INTELLIGENCE PANEL -->
+          <div class="chart-card" id="network-panel" style="margin-bottom:24px;background:linear-gradient(135deg,rgba(167,139,250,0.06),rgba(91,110,245,0.04));border-color:rgba(167,139,250,0.2)">
+            <div class="chart-card-hdr" style="margin-bottom:16px">
+              <div>
+                <div class="chart-card-title" style="color:var(--purple)">🌐 Network Intelligence</div>
+                <div class="chart-card-sub">Cross-platform scammer signals — shared across all Driftline platforms</div>
+              </div>
+              <div class="live-pill" style="background:rgba(167,139,250,0.1);border-color:rgba(167,139,250,0.2);color:var(--purple)"><div class="live-dot" style="background:var(--purple)"></div>live</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+              <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
+                <div style="font-size:28px;font-weight:800;color:var(--purple)" id="net-platforms">—</div>
+                <div style="font-size:11px;color:var(--text4);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;margin-top:4px">Platforms</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
+                <div style="font-size:28px;font-weight:800;color:var(--accent)" id="net-events">—</div>
+                <div style="font-size:11px;color:var(--text4);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;margin-top:4px">Events Scored</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
+                <div style="font-size:28px;font-weight:800;color:var(--red)" id="net-fingerprints">—</div>
+                <div style="font-size:11px;color:var(--text4);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;margin-top:4px">Flagged Devices</div>
+              </div>
+              <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center">
+                <div style="font-size:28px;font-weight:800;color:var(--green)" id="net-crossmatches">—</div>
+                <div style="font-size:11px;color:var(--text4);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.1em;margin-top:4px">Cross-Platform Catches</div>
+              </div>
+            </div>
+          </div>
+
           <div class="list-hdr"><h3>Recent Flagged Accounts</h3><span class="list-count" id="overview-count">loading...</span></div>
           <div class="acct-list" id="overview-list"><div class="loading"><div class="spinner"></div>Loading...</div></div>
         </div>
@@ -678,6 +707,39 @@ footer { border-top: 1px solid var(--border); padding: 44px 56px; display: flex;
               <div class="usage-bar-labels"><span id="usage-num">0 events used</span><span>10,000 limit</span></div>
               <div class="usage-bar"><div class="usage-bar-fill" id="usage-fill" style="width:0%"></div></div>
             </div>
+          </div>
+
+          <div class="key-box" style="border-color:rgba(16,217,160,0.2);background:rgba(16,217,160,0.03)">
+            <div class="key-box-label" style="color:var(--green)">🧪 Test Your Integration</div>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Fire a live test event and confirm your API key is working. Risk score will appear below instantly.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+              <button class="btn btn-success btn-sm" onclick="fireTestEvent()">Fire Test Event</button>
+              <button class="btn btn-secondary btn-sm" onclick="testGetFlagged()">Test GET /flagged</button>
+              <button class="btn btn-secondary btn-sm" onclick="testGetStats()">Test GET /stats</button>
+            </div>
+            <div id="test-result" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px;font-family:'DM Mono',monospace;font-size:12px;color:var(--green);white-space:pre-wrap;max-height:200px;overflow-y:auto"></div>
+          </div>
+
+          <div class="key-box" style="border-color:rgba(91,110,245,0.2)">
+            <div class="key-box-label">Quick Integration</div>
+            <p style="font-size:13px;color:var(--text3);margin-bottom:16px">Add this to your message handler. Replace <code style="background:var(--bg);padding:2px 6px;border-radius:4px;color:var(--accent-light)">YOUR_KEY</code> with your API key above.</p>
+            <pre style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px;font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);overflow-x:auto;white-space:pre"><code id="code-snippet">import requests
+
+def on_message(user_id, conversation_id, reply_speed):
+    r = requests.post(
+        "https://driftline-api-production.up.railway.app/event",
+        headers={"X-API-Key": "YOUR_KEY"},
+        params={
+            "user_id": user_id,
+            "conversation_id": conversation_id,
+            "platform": "your_platform",
+            "reply_speed": reply_speed
+        }
+    )
+    risk = r.json()
+    if risk["risk_level"] == "critical":
+        suspend_user(user_id)</code></pre>
+            <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="copySnippet()">Copy code</button>
           </div>
         </div>
       </div>
@@ -1191,16 +1253,27 @@ function loadDash() {
     document.getElementById('overview-count').textContent = accounts.length + ' accounts';
     if (!recent.length) {
       document.getElementById('overview-list').innerHTML = '<div class="empty-state"><div class="empty-icon">✓</div>No flagged accounts yet — your platform is clean.</div>';
-      return;
+    } else {
+      var html = '';
+      for (var j = 0; j < recent.length; j++) { html += renderAccount(recent[j], false); }
+      document.getElementById('overview-list').innerHTML = html;
     }
-    var html = '';
-    for (var j = 0; j < recent.length; j++) { html += renderAccount(recent[j], false); }
-    document.getElementById('overview-list').innerHTML = html;
   })
   .catch(function() {
     document.getElementById('live-status').textContent = 'error';
     document.getElementById('overview-list').innerHTML = '<div class="loading" style="color:var(--red)">Could not connect. Please refresh.</div>';
   });
+
+  // Fetch network stats
+  fetch(API + '/network/stats', { headers: h })
+    .then(function(r) { return r.json(); })
+    .then(function(ns) {
+      if (document.getElementById('net-platforms')) document.getElementById('net-platforms').textContent = (ns.total_platforms_in_network || 0).toLocaleString();
+      if (document.getElementById('net-events')) document.getElementById('net-events').textContent = (ns.total_events_scored || 0).toLocaleString();
+      if (document.getElementById('net-fingerprints')) document.getElementById('net-fingerprints').textContent = (ns.unique_flagged_fingerprints || 0).toLocaleString();
+      if (document.getElementById('net-crossmatches')) document.getElementById('net-crossmatches').textContent = (ns.total_cross_platform_catches || 0).toLocaleString();
+    })
+    .catch(function() {});
 }
 
 function loadFlagged() {
@@ -1235,6 +1308,72 @@ function filterFlagged(level, btn) {
   renderFlagged();
 }
 
+function fireTestEvent() {
+  var h = { 'X-API-Key': apiKey };
+  var testUserId = 'test_user_' + Math.floor(Math.random() * 9999);
+  var el = document.getElementById('test-result');
+  el.style.display = 'block';
+  el.textContent = 'Firing test event...';
+  fetch(API + '/event?' + new URLSearchParams({
+    user_id: testUserId,
+    conversation_id: 'test_conv_001',
+    platform: 'test',
+    reply_speed: '1.2',
+    message_length: '45'
+  }), { method: 'POST', headers: h })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    el.style.color = 'var(--green)';
+    el.textContent = '\u2713 POST /event - 200 OK\n\n' + JSON.stringify(d, null, 2);
+  })
+  .catch(function(e) {
+    el.style.color = 'var(--red)';
+    el.textContent = '\u2717 Error: ' + e.message;
+  });
+}
+
+function testGetFlagged() {
+  var h = { 'X-API-Key': apiKey };
+  var el = document.getElementById('test-result');
+  el.style.display = 'block';
+  el.textContent = 'Fetching flagged accounts...';
+  fetch(API + '/flagged?limit=3', { headers: h })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    el.style.color = 'var(--green)';
+    el.textContent = '\u2713 GET /flagged - 200 OK\n\n' + JSON.stringify(d, null, 2);
+  })
+  .catch(function(e) {
+    el.style.color = 'var(--red)';
+    el.textContent = '\u2717 Error: ' + e.message;
+  });
+}
+
+function testGetStats() {
+  var h = { 'X-API-Key': apiKey };
+  var el = document.getElementById('test-result');
+  el.style.display = 'block';
+  el.textContent = 'Fetching stats...';
+  fetch(API + '/stats', { headers: h })
+  .then(function(r) { return r.json(); })
+  .then(function(d) {
+    el.style.color = 'var(--green)';
+    el.textContent = '\u2713 GET /stats - 200 OK\n\n' + JSON.stringify(d, null, 2);
+  })
+  .catch(function(e) {
+    el.style.color = 'var(--red)';
+    el.textContent = '\u2717 Error: ' + e.message;
+  });
+}
+
+function copySnippet() {
+  var el = document.getElementById('code-snippet');
+  var text = el ? el.textContent.replace('YOUR_KEY', apiKey) : '';
+  navigator.clipboard.writeText(text).then(function() {
+    showToast('Code copied with your API key', 'success');
+  });
+}
+
 function dismissAccount(userId, action) {
   var h = { 'X-API-Key': apiKey };
   fetch(API + '/account/' + userId + '?action=' + action, { method: 'DELETE', headers: h })
@@ -1249,6 +1388,11 @@ function dismissAccount(userId, action) {
 function loadAccount() {
   document.getElementById('acct-mkt').textContent = mktName;
   document.getElementById('acct-plan').textContent = isDemo ? 'Demo' : 'Free';
+  // Inject real API key into code snippet
+  var snippet = document.getElementById('code-snippet');
+  if (snippet && apiKey) {
+    snippet.textContent = snippet.textContent.replace('YOUR_KEY', apiKey);
+  }
       // Fetch real account info
       if (!isDemo && window._apiKey) {
         fetch(API + '/account', { headers: { 'X-API-Key': window._apiKey } })
