@@ -375,23 +375,57 @@ footer { border-top: 1px solid var(--border); padding: 44px 56px; display: flex;
 <!-- HOME -->
 <div id="page-home" class="page active">
   <section class="hero">
-    <div class="hero-badge"><div class="badge-dot"></div>Now in Early Access · Trusted by growing platforms</div>
-    <h1>Catch fraud <em>before</em> it happens</h1>
-    <p class="hero-sub">Driftline analyzes messaging metadata, behavioral patterns, and network signals in real time — detecting bad actors during the conversation stage, before any damage is done.</p>
+    <div class="hero-badge"><div class="badge-dot"></div>Real-time fraud detection &bull; Metadata only, no content read</div>
+    <h1>Scammers leave a pattern.<br><em>Driftline catches it.</em></h1>
+    <p class="hero-sub">Before a fake renter books. Before a scammer collects payment. Before a fraudulent tutor extracts a deposit. Driftline detects the behavioral fingerprint in real time — at the messaging layer.</p>
     <div class="hero-btns">
-      <button class="btn btn-primary btn-lg" onclick="go('auth')">Start for free →</button>
-      <button class="btn btn-outline btn-lg" onclick="goDash('overview')">View live demo</button>
+      <button class="btn btn-primary btn-lg" onclick="go('auth')">Start free →</button>
+      <button class="btn btn-outline btn-lg" onclick="go('auth')">See it live</button>
     </div>
-    <div class="code-block">
-      <div class="label">INTEGRATION</div>
-      <span class="cm"># Integrate Driftline — send events, get risk scores back</span><br><br>
-      <span class="ck">import</span> requests<br><br>
-      res = requests.<span class="cf">post</span>(<br>
-      &nbsp;&nbsp;<span class="cs">"https://api.trydriftline.com/event"</span>,<br>
-      &nbsp;&nbsp;headers={<span class="cs">"X-API-Key"</span>: <span class="cs">"your_key"</span>},<br>
-      &nbsp;&nbsp;params={<span class="cs">"user_id"</span>: <span class="cs">"u_123"</span>, <span class="cs">"conversation_id"</span>: <span class="cs">"c_456"</span>, <span class="cs">"platform"</span>: <span class="cs">"myapp"</span>}<br>
-      )<br><br>
-      <span class="cm"># → {"risk_score": 91, "level": "critical", "flags": ["52 msgs/hr"]}</span>
+
+    <!-- LIVE DEMO WIDGET -->
+    <div id="hero-demo" style="width:100%;max-width:860px;background:var(--surface);border:1px solid var(--border);border-radius:20px;overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,0.5);text-align:left;position:relative;">
+      <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent)"></div>
+      <!-- Demo bar -->
+      <div style="background:var(--surface2);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:10px;">
+        <div style="width:10px;height:10px;border-radius:50%;background:#ff5f57"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:#febc2e"></div>
+        <div style="width:10px;height:10px;border-radius:50%;background:#28c840"></div>
+        <div style="flex:1;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text4)">Driftline — Live Detection Demo</div>
+        <div style="display:flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:11px;color:var(--green)"><div class="badge-dot"></div>scanning</div>
+      </div>
+      <!-- Two column layout -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;min-height:320px;">
+        <!-- Left: fake marketplace chat -->
+        <div style="border-right:1px solid var(--border);padding:20px;display:flex;flex-direction:column;">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--text4);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:14px;">SwapMart — Live Marketplace</div>
+          <div id="demo-chat" style="flex:1;display:flex;flex-direction:column;gap:8px;overflow:hidden;"></div>
+        </div>
+        <!-- Right: Driftline scoring in real time -->
+        <div style="padding:20px;display:flex;flex-direction:column;">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--accent-light);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:14px;">Driftline — Real-Time Signals</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;">
+              <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">Events</div>
+              <div id="demo-events" style="font-size:22px;font-weight:800;color:var(--accent-light)">0</div>
+            </div>
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px;">
+              <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--text4);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px">Risk Score</div>
+              <div id="demo-score" style="font-size:22px;font-weight:800;color:var(--green)">0</div>
+            </div>
+          </div>
+          <div id="demo-signals" style="flex:1;display:flex;flex-direction:column;gap:6px;overflow:hidden;"></div>
+          <div id="demo-verdict" style="display:none;margin-top:12px;background:rgba(255,69,96,0.1);border:1px solid rgba(255,69,96,0.3);border-radius:10px;padding:12px;text-align:center;">
+            <div style="font-size:13px;font-weight:700;color:var(--red)">&#x26A0;&#xFE0F; ACCOUNT SUSPENDED</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px;font-family:'DM Mono',monospace">Blocked before any payment</div>
+          </div>
+        </div>
+      </div>
+      <!-- Progress bar -->
+      <div style="padding:12px 20px;border-top:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text4)" id="demo-status">Watching for suspicious behavior...</div>
+        <button onclick="restartHeroDemo()" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text4);background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;">&#x21BA; restart</button>
+      </div>
     </div>
   </section>
 
@@ -1463,6 +1497,113 @@ function copyKey() {
     showToast('API key copied!', 'success');
   }
 }
+
+// ── HERO LIVE DEMO ────────────────────────────────────────────────────────────
+var heroTimer = null;
+var heroState = { events: 0, score: 0, step: 0, running: false };
+
+var demoScript = [
+  { delay: 600,  from: 'them', text: 'Is this still available?', signal: null, score: 0 },
+  { delay: 500,  from: 'them', text: 'Is this still available?', signal: null, score: 0 },
+  { delay: 400,  from: 'them', text: 'Is this still available?', signal: null, score: 5 },
+  { delay: 380,  from: 'them', text: 'Can you ship to Texas?',   signal: 'High message volume detected', score: 12 },
+  { delay: 350,  from: 'them', text: 'Lowest price?',            signal: null, score: 18 },
+  { delay: 300,  from: 'them', text: 'Is this still available?', signal: 'Bot-like reply speed: avg 0.9s', score: 28 },
+  { delay: 280,  from: 'them', text: 'Is this still available?', signal: null, score: 35 },
+  { delay: 260,  from: 'them', text: 'Lowest price?',            signal: '12 simultaneous conversations', score: 48 },
+  { delay: 240,  from: 'them', text: 'Is this still available?', signal: 'Copy-paste pattern: 2% length variance', score: 62 },
+  { delay: 220,  from: 'them', text: 'Can you do lower?',        signal: null, score: 71 },
+  { delay: 200,  from: 'them', text: 'Is this still available?', signal: 'Spray pattern: 1 msg/convo across 22 threads', score: 83 },
+  { delay: 180,  from: 'them', text: 'Need it today CASH',       signal: 'CRITICAL — Suspend account immediately', score: 91, critical: true },
+];
+
+function addDemoMsg(from, text, bot) {
+  var chat = document.getElementById('demo-chat');
+  if (!chat) return;
+  var div = document.createElement('div');
+  div.style.cssText = 'display:flex;flex-direction:column;max-width:85%;animation:msgIn 0.2s ease;' + (from === 'you' ? 'align-self:flex-end' : 'align-self:flex-start');
+  var bubble = document.createElement('div');
+  bubble.style.cssText = 'padding:7px 11px;border-radius:10px;font-size:12px;line-height:1.4;' +
+    (from === 'you'
+      ? 'background:var(--accent);color:#fff;border-bottom-right-radius:3px'
+      : (bot ? 'background:rgba(255,69,96,0.1);border:1px solid rgba(255,69,96,0.25);color:var(--text);border-bottom-left-radius:3px'
+             : 'background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-bottom-left-radius:3px'));
+  bubble.textContent = text;
+  div.appendChild(bubble);
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  while (chat.children.length > 6) chat.removeChild(chat.firstChild);
+}
+
+function addDemoSignal(text, critical) {
+  var el = document.getElementById('demo-signals');
+  if (!el) return;
+  var div = document.createElement('div');
+  div.style.cssText = 'font-family:"DM Mono",monospace;font-size:10px;padding:6px 10px;border-radius:7px;animation:slideR 0.25s ease;'
+    + (critical
+      ? 'background:rgba(255,69,96,0.12);color:var(--red);border:1px solid rgba(255,69,96,0.25)'
+      : 'background:rgba(91,110,245,0.08);color:var(--accent-light);border:1px solid rgba(91,110,245,0.15)');
+  div.textContent = (critical ? '⚠️ ' : '▶ ') + text;
+  el.insertBefore(div, el.firstChild);
+  while (el.children.length > 4) el.removeChild(el.lastChild);
+}
+
+function runHeroDemo() {
+  if (heroState.running) return;
+  heroState = { events: 0, score: 0, step: 0, running: true };
+  var chat = document.getElementById('demo-chat');
+  var sigs = document.getElementById('demo-signals');
+  var verdict = document.getElementById('demo-verdict');
+  var status = document.getElementById('demo-status');
+  if (chat) chat.innerHTML = '';
+  if (sigs) sigs.innerHTML = '';
+  if (verdict) verdict.style.display = 'none';
+  if (status) status.textContent = 'Watching for suspicious behavior...';
+  document.getElementById('demo-events').textContent = '0';
+  document.getElementById('demo-score').textContent = '0';
+  document.getElementById('demo-score').style.color = 'var(--green)';
+
+  // First show a normal message from the user
+  setTimeout(function() {
+    addDemoMsg('you', 'Hey! Is this still available?', false);
+    addDemoMsg('them', 'Yes! Come check it out anytime.', false);
+  }, 400);
+
+  function runStep() {
+    if (heroState.step >= demoScript.length) {
+      heroState.running = false;
+      if (verdict) verdict.style.display = 'block';
+      if (status) status.textContent = 'Blocked before any payment was made.';
+      // Auto-restart after 4 seconds
+      heroTimer = setTimeout(restartHeroDemo, 4000);
+      return;
+    }
+    var s = demoScript[heroState.step];
+    heroState.events++;
+    heroState.score = s.score;
+    document.getElementById('demo-events').textContent = heroState.events;
+    var scoreEl = document.getElementById('demo-score');
+    scoreEl.textContent = s.score;
+    scoreEl.style.color = s.score >= 75 ? 'var(--red)' : s.score >= 40 ? 'var(--orange)' : 'var(--green)';
+    addDemoMsg(s.from, s.text, s.score > 40);
+    if (s.signal) addDemoSignal(s.signal, s.critical);
+    if (status) status.textContent = s.score >= 75 ? 'CRITICAL — Suspending account...' : s.score >= 40 ? 'Elevated risk detected — monitoring...' : 'Watching for suspicious behavior...';
+    heroState.step++;
+    heroTimer = setTimeout(runStep, s.delay);
+  }
+
+  heroTimer = setTimeout(runStep, 1200);
+}
+
+function restartHeroDemo() {
+  if (heroTimer) clearTimeout(heroTimer);
+  heroState.running = false;
+  runHeroDemo();
+}
+
+// Auto-start when home page is visible
+setTimeout(runHeroDemo, 800);
+// ── END HERO DEMO ─────────────────────────────────────────────────────────────
 </script>
 </body>
 </html>
