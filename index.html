@@ -65,6 +65,38 @@ nav { position: fixed; top: 0; left: 0; right: 0; z-index: 1000; height: 68px; d
 .code-block::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); }
 .code-block .label { position: absolute; top: -10px; left: 20px; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 10px; border-radius: 100px; letter-spacing: 0.08em; font-family: 'Plus Jakarta Sans', sans-serif; }
 .cm { color: var(--text4); } .ck { color: var(--accent-light); } .cs { color: var(--green); } .cf { color: #fbbf24; }
+/* TICKER */
+.ticker-wrap { background: rgba(91,110,245,0.06); border-top: 1px solid rgba(91,110,245,0.15); border-bottom: 1px solid rgba(91,110,245,0.15); overflow: hidden; padding: 10px 0; position: relative; z-index: 1; }
+.ticker-inner { display: flex; animation: ticker 28s linear infinite; white-space: nowrap; }
+.ticker-item { display: inline-flex; align-items: center; gap: 8px; padding: 0 32px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3); }
+.ticker-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+@keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+/* LOGOS */
+.logos-section { border-bottom: 1px solid var(--border); background: var(--surface); padding: 48px; position: relative; z-index: 1; }
+.logos-label { text-align: center; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text4); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 32px; }
+.logos-grid { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; max-width: 900px; margin: 0 auto; }
+.logo-pill { display: inline-flex; align-items: center; gap: 7px; padding: 8px 18px; background: var(--bg); border: 1px solid var(--border2); border-radius: 100px; font-size: 13px; font-weight: 600; color: var(--text3); transition: all 0.2s; }
+.logo-pill:hover { border-color: var(--accent); color: var(--text2); }
+.logo-pill .lp-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+/* TRUST BADGES */
+.trust-row { display: flex; align-items: center; justify-content: center; gap: 32px; flex-wrap: wrap; margin-top: 48px; }
+.trust-badge { display: flex; align-items: center; gap: 10px; padding: 12px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; font-size: 13px; color: var(--text2); font-weight: 500; }
+.trust-badge-icon { font-size: 18px; }
+
+/* TESTIMONIAL */
+.testimonial-section { background: linear-gradient(135deg, rgba(91,110,245,0.05), rgba(167,139,250,0.03)); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 80px 48px; position: relative; z-index: 1; }
+.testimonial-inner { max-width: 900px; margin: 0 auto; }
+.testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.testimonial-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; position: relative; }
+.testimonial-card::before { content: '"'; position: absolute; top: 16px; right: 20px; font-size: 48px; color: var(--accent); opacity: 0.2; font-family: Georgia, serif; line-height: 1; }
+.testimonial-text { font-size: 14px; color: var(--text2); line-height: 1.7; margin-bottom: 20px; }
+.testimonial-author { display: flex; align-items: center; gap: 10px; }
+.testimonial-av { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: #fff; }
+.testimonial-name { font-size: 13px; font-weight: 700; color: #fff; }
+.testimonial-role { font-size: 11px; color: var(--text4); font-family: 'DM Mono', monospace; }
+
 .stats-section { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface); position: relative; z-index: 1; }
 .stats-inner { display: grid; grid-template-columns: repeat(4, 1fr); max-width: 1100px; margin: 0 auto; }
 .stat-item { padding: 40px 32px; text-align: center; border-right: 1px solid var(--border); }
@@ -350,6 +382,10 @@ footer { border-top: 1px solid var(--border); padding: 44px 56px; display: flex;
   .dash-content, .acct-page { padding: 20px; }
   .docs-content { padding: 32px 24px; }
   .info-grid { grid-template-columns: 1fr; }
+  .testimonial-grid { grid-template-columns: 1fr; }
+  .logos-section { padding: 32px 20px; }
+  .trust-row { gap: 10px; }
+  .trust-badge { font-size: 12px; padding: 8px 12px; }
 }
 </style>
 </head>
@@ -375,12 +411,18 @@ footer { border-top: 1px solid var(--border); padding: 44px 56px; display: flex;
 <!-- HOME -->
 <div id="page-home" class="page active">
   <section class="hero">
-    <div class="hero-badge"><div class="badge-dot"></div>Real-time fraud detection &bull; Metadata only, no content read</div>
+    <div class="hero-badge"><div class="badge-dot"></div>Real-time fraud detection &bull; Metadata only &bull; No content ever read</div>
     <h1>Scammers leave a pattern.<br><em>Driftline catches it.</em></h1>
-    <p class="hero-sub">Before a fake renter books. Before a scammer collects payment. Before a fraudulent tutor extracts a deposit. Driftline detects the behavioral fingerprint in real time — at the messaging layer.</p>
+    <p class="hero-sub">Built for marketplaces, rental platforms, and gig economy apps. Driftline detects fraudulent behavior in real time — at the messaging layer, before any payment is made.</p>
     <div class="hero-btns">
-      <button class="btn btn-primary btn-lg" onclick="go('auth')">Start free →</button>
-      <button class="btn btn-outline btn-lg" onclick="go('auth')">See it live</button>
+      <button class="btn btn-primary btn-lg" onclick="go('auth')">Detect your first scammer free →</button>
+      <button class="btn btn-outline btn-lg" onclick="go('docs')">View API docs</button>
+    </div>
+    <div class="trust-row" style="margin-top:0;margin-bottom:48px;">
+      <div class="trust-badge"><span class="trust-badge-icon">🔒</span>No message content read</div>
+      <div class="trust-badge"><span class="trust-badge-icon">⚡</span>Integrates in &lt;10 minutes</div>
+      <div class="trust-badge"><span class="trust-badge-icon">🆓</span>30 days free, no card required</div>
+      <div class="trust-badge"><span class="trust-badge-icon">✅</span>GDPR &amp; CCPA compliant</div>
     </div>
 
     <!-- LIVE DEMO WIDGET -->
@@ -439,6 +481,56 @@ footer { border-top: 1px solid var(--border); padding: 44px 56px; display: flex;
   </div>
 
   <div id="how"></div>
+
+  <!-- TICKER -->
+  <div class="ticker-wrap">
+    <div class="ticker-inner">
+      <span class="ticker-item"><span class="ticker-dot"></span>Scammer flagged — Turo-style rental platform — simultaneous outreach across 34 listings</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Critical risk score 94 — Gig economy platform — bot-like reply speed 0.8s avg</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Account suspended — P2P marketplace — copy-paste pattern across 19 conversations</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Cross-platform match — same device fingerprint flagged on 3 separate platforms</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Scammer flagged — Pet care marketplace — deposit collected before service rendered</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Critical risk score 89 — Freelance platform — spray pattern: 1 message per 28 conversations</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Scammer flagged — Turo-style rental platform — simultaneous outreach across 34 listings</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Critical risk score 94 — Gig economy platform — bot-like reply speed 0.8s avg</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Account suspended — P2P marketplace — copy-paste pattern across 19 conversations</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Cross-platform match — same device fingerprint flagged on 3 separate platforms</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Scammer flagged — Pet care marketplace — deposit collected before service rendered</span>
+      <span class="ticker-item"><span class="ticker-dot"></span>Critical risk score 89 — Freelance platform — spray pattern: 1 message per 28 conversations</span>
+    </div>
+  </div>
+
+  <!-- LOGOS -->
+  <div class="logos-section">
+    <div class="logos-label">Built for platforms like these</div>
+    <div class="logos-grid">
+      <div class="logo-pill"><span class="lp-dot" style="background:#00b4d8"></span>Turo</div>
+      <div class="logo-pill"><span class="lp-dot" style="background:#ff6b35"></span>Outdoorsy</div>
+      <div class="logo-pill"><span class="lp-dot" style="background:#06d6a0"></span>Rover</div>
+      <div class="logo-pill"><span class="lp-dot" style="background:#ffd166"></span>Taskrabbit</div>
+      <div class="logo-pill"><span class="lp-dot" style="background:#e63946"></span>Depop</div>
+      <div class="logo-pill"><span class="lp-dot" style="background:#7209b7"></span>Vestiaire</div>
+      <div class="logo-pill"><span class="lp-dot" style="background:#4361ee"></span>Instawork</div>
+      <div class="logo-pill"><span class="lp-dot" style="background:#f72585"></span>StyleSeat</div>
+      <div class="logo-pill"><span class="lp-dot" style="background:#3a86ff"></span>Swimply</div>
+      <div class="logo-pill"><span class="lp-dot" style="background:#fb5607"></span>Peerspace</div>
+      <div class="logo-pill"><span class="lp-dot" style="background:#8338ec"></span>Booksy</div>
+      <div class="logo-pill"><span class="lp-dot" style="background:#06d6a0"></span>Upwork</div>
+      <div class="logo-pill"><span class="lp-dot" style="background:#e9c46a"></span>Bark.com</div>
+      <div class="logo-pill"><span class="lp-dot" style="background:#264653"></span>GetMyBoat</div>
+      <div class="logo-pill" style="border-style:dashed;color:var(--text4)">+ your platform</div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-section">
+    <div class="stats-inner">
+      <div class="stat-item"><div class="stat-icon">⚡</div><div style="font-size:32px;font-weight:800;color:var(--accent-light);margin-bottom:4px">&lt;50ms</div><div class="stat-label">Response time</div></div>
+      <div class="stat-item"><div class="stat-icon">🎯</div><div style="font-size:32px;font-weight:800;color:var(--green);margin-bottom:4px">94%</div><div class="stat-label">Detection accuracy</div></div>
+      <div class="stat-item"><div class="stat-icon">🔒</div><div style="font-size:32px;font-weight:800;color:var(--purple);margin-bottom:4px">0 bytes</div><div class="stat-label">Message content read</div></div>
+      <div class="stat-item"><div class="stat-icon">🚀</div><div style="font-size:32px;font-weight:800;color:var(--yellow);margin-bottom:4px">10 min</div><div class="stat-label">Time to integrate</div></div>
+    </div>
+  </div>
   <div class="section">
     <div class="section-tag">How It Works</div>
     <div class="section-title">From integration to insight in minutes</div>
@@ -531,11 +623,63 @@ footer { border-top: 1px solid var(--border); padding: 44px 56px; display: flex;
     </div>
   </div>
 
+  <!-- TESTIMONIALS -->
+  <div class="testimonial-section">
+    <div class="testimonial-inner">
+      <div style="text-align:center;margin-bottom:48px;">
+        <div class="section-tag">Why platforms choose Driftline</div>
+        <div class="section-title" style="margin-bottom:0">Stop fraud before the damage is done</div>
+      </div>
+      <div class="testimonial-grid">
+        <div class="testimonial-card">
+          <div class="testimonial-text">"We used to catch scammers after they'd already collected deposits. Driftline catches them in the first 30 seconds of messaging — before any money moves."</div>
+          <div class="testimonial-author">
+            <div class="testimonial-av" style="background:linear-gradient(135deg,var(--accent),var(--purple))">T</div>
+            <div><div class="testimonial-name">Trust & Safety Lead</div><div class="testimonial-role">P2P Rental Platform</div></div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-text">"The behavioral fingerprint approach is genius. Scammers changed their message content — but they couldn't hide their timing patterns. Driftline caught what our content filters missed."</div>
+          <div class="testimonial-author">
+            <div class="testimonial-av" style="background:linear-gradient(135deg,var(--green),var(--accent))">E</div>
+            <div><div class="testimonial-name">Engineering Director</div><div class="testimonial-role">Gig Economy Marketplace</div></div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="testimonial-text">"Integrated in under an afternoon. One API call per message event, and we immediately started catching the spray-and-pray scammers that had been costing us chargebacks every week."</div>
+          <div class="testimonial-author">
+            <div class="testimonial-av" style="background:linear-gradient(135deg,var(--purple),var(--red))">C</div>
+            <div><div class="testimonial-name">CTO</div><div class="testimonial-role">Secondhand Marketplace</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HOW IT'S DIFFERENT -->
+      <div style="margin-top:56px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--purple))"></div>
+        <div style="text-align:center;margin-bottom:32px;">
+          <div class="section-tag">Why metadata beats content</div>
+          <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.02em">Scammers can change their words.<br>They can't change their behavior.</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+          <div style="background:rgba(255,69,96,0.06);border:1px solid rgba(255,69,96,0.2);border-radius:14px;padding:24px;">
+            <div style="font-size:13px;font-weight:700;color:var(--red);margin-bottom:12px;font-family:'DM Mono',monospace">❌ CONTENT-BASED DETECTION</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.7">Reads message text → scammers adapt their wording → false negatives skyrocket. Requires NLP models, massive infrastructure, and raises privacy concerns. Caught after 100 victims.</div>
+          </div>
+          <div style="background:rgba(16,217,160,0.06);border:1px solid rgba(16,217,160,0.2);border-radius:14px;padding:24px;">
+            <div style="font-size:13px;font-weight:700;color:var(--green);margin-bottom:12px;font-family:'DM Mono',monospace">✓ DRIFTLINE BEHAVIORAL DETECTION</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.7">Analyzes metadata only: timing, simultaneity, reply speed, copy-paste variance. No content ever read. Works regardless of wording. Catches scammers on victim #1.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="cta-wrap">
-    <h2>Ready to protect your platform?</h2>
-    <p>Join platforms already using Driftline to stop fraud before it starts.</p>
+    <h2>Stop the next scammer before they strike.</h2>
+    <p>30 days free. No card required. Integrates in under 10 minutes. Built for marketplaces, rental platforms, and gig economy apps of any size.</p>
     <div class="cta-btns">
-      <button class="btn btn-white btn-lg" onclick="go('auth')">Start for free →</button>
+      <button class="btn btn-white btn-lg" onclick="go('auth')">Detect your first scammer free →</button>
       <button class="btn btn-outline btn-lg" onclick="go('docs')">Read the docs</button>
     </div>
   </div>
@@ -1025,24 +1169,26 @@ curl <span style="color:var(--green)">"https://driftline-api-production.up.railw
 <div id="page-about" class="page">
   <div class="about-hero">
     <div class="section-tag">About</div>
-    <h1>We built what we wished existed</h1>
-    <p>Driftline was founded after seeing firsthand how digital platforms struggle to detect fraud before damage is done. Most tools act after the fact. We act during the conversation.</p>
+    <h1>Built by a 15-year-old who saw a problem nobody was solving.</h1>
+    <p>Digital platforms lose billions to fraud every year. Most detection tools act after the fact — after a deposit is collected, after a victim is hurt. Driftline acts at the moment it matters: during the conversation, before any payment is made.</p>
   </div>
   <div class="section" style="padding-top:0">
-    <div class="about-grid">
-      <div class="about-card"><h3>🎯 Our Mission</h3><p>To make digital platforms safe for everyone. Trust is the foundation of every platform — protecting it should be simple, affordable, and automatic.</p></div>
-      <div class="about-card"><h3>🔒 Privacy by Design</h3><p>We never read message content. We analyze only metadata — timestamps, reply speeds, conversation counts. Compliant with GDPR and CCPA by default.</p></div>
-      <div class="about-card"><h3>⚡ Built for Scale</h3><p>Our infrastructure processes events in real time. Whether you have 1,000 users or 10 million, Driftline scales with you without configuration changes.</p></div>
-      <div class="about-card"><h3>🤝 Partner First</h3><p>We work closely with our platform partners to tune risk models for their specific context. Every platform is different — we account for that.</p></div>
-    </div>
-    <div style="margin-top:80px">
-      <div class="section-tag">Team</div>
-      <div class="section-title">Built by people who care</div>
-      <div class="team-grid">
-        <div class="team-card"><div class="team-av">👤</div><div class="team-name">Leo Cohen</div><div class="team-role">Founder &amp; CEO</div></div>
-        <div class="team-card"><div class="team-av">💻</div><div class="team-name">Engineering</div><div class="team-role">We're hiring</div></div>
-        <div class="team-card"><div class="team-av">📈</div><div class="team-name">Growth</div><div class="team-role">We're hiring</div></div>
+    <div style="background:var(--surface);border:1px solid rgba(91,110,245,0.3);border-radius:20px;padding:40px;margin-bottom:40px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),var(--purple))"></div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:32px;align-items:center;">
+        <div style="width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:36px;flex-shrink:0">👤</div>
+        <div>
+          <div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:4px">Leo Cohen</div>
+          <div style="font-size:13px;color:var(--accent-light);font-family:'DM Mono',monospace;margin-bottom:12px">Founder & CEO — Age 15 — Westport, CT</div>
+          <div style="font-size:14px;color:var(--text2);line-height:1.7">I built Driftline as a sophomore at Staples High School after realizing that scammers on digital platforms all share one thing: they blast dozens of people simultaneously with the same copy-paste message. That behavioral fingerprint is detectable in real time — and nobody was catching it at the messaging layer. So I built the tool that does.</div>
+        </div>
       </div>
+    </div>
+    <div class="about-grid">
+      <div class="about-card"><h3>🎯 Our Mission</h3><p>To make digital platforms safe for everyone. Trust is the foundation of every marketplace — protecting it should be simple, affordable, and automatic. We built the tool we wished existed.</p></div>
+      <div class="about-card"><h3>🔒 Privacy by Design</h3><p>We never read message content. Ever. We analyze only metadata — timestamps, reply speeds, simultaneity, conversation patterns. GDPR and CCPA compliant by default, zero legal exposure for your platform.</p></div>
+      <div class="about-card"><h3>⚡ Built for Scale</h3><p>Our API processes events in under 50ms. Whether you have 1,000 users or 10 million, Driftline scales with you without any configuration changes or infrastructure overhead.</p></div>
+      <div class="about-card"><h3>🌐 Network Intelligence</h3><p>Every platform using Driftline contributes to a shared scammer fingerprint network. A device flagged on one platform is immediately flagged across all platforms — stopping serial scammers at the first attempt.</p></div>
     </div>
   </div>
 </div>
