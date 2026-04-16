@@ -851,6 +851,286 @@ def get_network_stats(api_key: str = Depends(get_tenant)):
     }
 
 
+
+# ── FREE AUDIT ENDPOINT ───────────────────────────────────────────────────────
+# Accepts a CSV of message events and runs full behavioral analysis.
+# No API key required — this is for prospects doing the free audit.
+# CSV columns: user_id, conversation_id, timestamp, reply_speed (opt), message_length (opt)
+
+import io, csv as csv_module
+from fastapi import UploadFile, File, Form
+
+@app.post("/audit")
+async def run_free_audit(
+    file: UploadFile = File(...),
+    platform_name: str = Form("unknown_platform"),
+    platform_type: str = Form("marketplace")
+):
+    """
+    Free fraud audit — no API key required.
+    Upload a CSV of message events and get a full behavioral fraud report back.
+    """
+    # Read and parse CSV
+    try:
+        contents = await file.read()
+        text = contents.decode("utf-8-sig")  # handle BOM
+        reader = csv_module.DictReader(io.StringIO(text))
+        rows = list(reader)
+    except Exception as e:
+        raise HTTPException(400, f"Could not parse CSV: {str(e)}")
+
+    if len(rows) < 5:
+        raise HTTPException(400, "CSV must contain at least 5 rows for meaningful analysis.")
+
+    # Normalize column names to lowercase
+    normalized = []
+    for row in rows:
+        norm = {k.strip().lower(): v.strip() for k, v in row.items()}
+        normalized.append(norm)
+
+    # Validate required columns
+    required = {"user_id", "conversation_id"}
+    sample_keys = set(normalized[0].keys()) if normalized else set()
+    missing = required - sample_keys
+    if missing:
+        raise HTTPException(400, f"Missing required columns: {missing}. Required: user_id, conversation_id, timestamp (optional), reply_speed (optional), message_length (optional)")
+
+    # Group events by user — replicate the same logic as compute_risk
+    # but run entirely in-memory without storing to DB
+    import time as time_mod
+
+    user_map = {}
+    now = time_mod.time()
+
+    for row in normalized:
+        uid = row.get("user_id", "").strip()
+        if not uid:
+            continue
+        if uid not in user_map:
+            user_map[uid] = {
+                "conversations": set(),
+                "timestamps": [],
+                "reply_speeds": [],
+                "message_lengths": [],
+                "events": []
+            }
+        u = user_map[uid]
+        cid = row.get("conversation_id", "").strip()
+        if cid:
+            u["conversations"].add(cid)
+
+        # Parse timestamp — if not provided use sequential now
+        ts_raw = row.get("timestamp", "").strip()
+        try:
+            ts = float(ts_raw) if ts_raw else now
+        except ValueError:
+            ts = now
+        u["timestamps"].append(ts)
+
+        rs_raw = row.get("reply_speed", "").strip()
+        try:
+            if rs_raw:
+                u["reply_speeds"].append(float(rs_raw))
+        except ValueError:
+            pass
+
+        ml_raw = row.get("message_length", "").strip()
+        try:
+            if ml_raw:
+                u["message_lengths"].append(int(ml_raw))
+        except ValueError:
+            pass
+
+        u["events"].append(row)
+
+    # Score every user using the same multi-signal logic as compute_risk
+    scored_users = []
+
+    for uid, u in user_map.items():
+        s = 0.0
+        flags = []
+
+        # Use latest timestamp as reference point
+        ref_ts = max(u["timestamps"]) if u["timestamps"] else now
+
+        # Time windows
+        events_1h = [
+            (ts, rs, ml)
+            for ts, rs, ml in zip(
+                u["timestamps"],
+                u["reply_speeds"] + [None] * len(u["timestamps"]),
+                u["message_lengths"] + [None] * len(u["timestamps"])
+            )
+            if ts > ref_ts - 3600
+        ]
+
+        convos_1h = set()
+        for i, ev in enumerate(u["events"]):
+            ts_raw2 = ev.get("timestamp", "").strip()
+            try:
+                ts2 = float(ts_raw2) if ts_raw2 else ref_ts
+            except ValueError:
+                ts2 = ref_ts
+            if ts2 > ref_ts - 3600:
+                cid2 = ev.get("conversation_id", "").strip()
+                if cid2:
+                    convos_1h.add(cid2)
+
+        mc_1h = len([t for t in u["timestamps"] if t > ref_ts - 3600])
+
+        # SIGNAL 1: Message volume
+        if mc_1h > 50:
+            s += 40
+            flags.append(f"Extreme message volume: {mc_1h} messages in 1 hour")
+        elif mc_1h > 25:
+            s += 22
+            flags.append(f"High message volume: {mc_1h} messages in 1 hour")
+        elif mc_1h > 12:
+            s += 10
+            flags.append(f"Elevated message volume: {mc_1h} messages in 1 hour")
+
+        # SIGNAL 2: Simultaneous conversations
+        uc = len(convos_1h) if convos_1h else len(u["conversations"])
+        if uc > 25:
+            s += 35
+            flags.append(f"Mass outreach: {uc} simultaneous conversations")
+        elif uc > 15:
+            s += 20
+            flags.append(f"High conversation spread: {uc} open conversations")
+        elif uc > 8:
+            s += 8
+            flags.append(f"Elevated conversation count: {uc} conversations")
+
+        # SIGNAL 3: Reply speed
+        speeds = [rs for rs in u["reply_speeds"] if rs is not None and 0 < rs < 600]
+        if speeds and len(speeds) >= 3:
+            avg_speed = sum(speeds) / len(speeds)
+            ultra_fast = [sp for sp in speeds if sp < 1.5]
+            pct_ultra = len(ultra_fast) / len(speeds)
+            if avg_speed < 1.5 and len(speeds) >= 5:
+                s += 28
+                flags.append(f"Bot-like reply speed: avg {round(avg_speed, 1)}s across {len(speeds)} messages")
+            elif avg_speed < 3.0 and len(speeds) >= 5:
+                s += 15
+                flags.append(f"Unusually fast replies: avg {round(avg_speed, 1)}s")
+            elif pct_ultra > 0.6 and len(speeds) >= 5:
+                s += 18
+                flags.append(f"{int(pct_ultra * 100)}% of replies sent in under 1.5 seconds")
+
+        # SIGNAL 4: Copy-paste (message length uniformity)
+        lengths = [ml for ml in u["message_lengths"] if ml is not None and ml > 0]
+        if len(lengths) >= 8:
+            avg_len = sum(lengths) / len(lengths)
+            variance = sum((l - avg_len) ** 2 for l in lengths) / len(lengths)
+            std_dev = variance ** 0.5
+            cv = std_dev / max(avg_len, 1)
+            if cv < 0.08 and avg_len > 20:
+                s += 22
+                flags.append(f"Copy-paste pattern: message length variance {round(cv * 100, 1)}%")
+            elif cv < 0.15 and avg_len > 20:
+                s += 10
+                flags.append(f"Suspiciously uniform message lengths (possible template use)")
+
+        # SIGNAL 5: Spray pattern (low msgs per convo)
+        if mc_1h >= 5 and uc >= 3:
+            msgs_per_convo = mc_1h / uc
+            if msgs_per_convo < 1.5:
+                s += 20
+                flags.append(f"Spray pattern: {mc_1h} messages across {uc} conversations")
+            elif msgs_per_convo < 2.5 and uc > 10:
+                s += 10
+                flags.append(f"Broadcast pattern: low engagement across many conversations")
+
+        # SIGNAL 6: Total conversation count (if no timestamps, use overall)
+        total_convos = len(u["conversations"])
+        if total_convos > 30 and uc == 0:
+            s += 20
+            flags.append(f"Very high total conversation count: {total_convos}")
+        elif total_convos > 15 and uc == 0:
+            s += 10
+            flags.append(f"High total conversation count: {total_convos}")
+
+        s = min(round(s), 99)
+
+        if s >= 75:
+            level = "critical"
+            recommendation = "Suspend account immediately"
+        elif s >= 55:
+            level = "high"
+            recommendation = "Limit messaging and verify identity"
+        elif s >= 35:
+            level = "medium"
+            recommendation = "Monitor closely"
+        else:
+            level = "low"
+            recommendation = "No action required"
+
+        scored_users.append({
+            "user_id": uid,
+            "risk_score": s,
+            "risk_level": level,
+            "flags": flags,
+            "recommendation": recommendation,
+            "total_messages": len(u["events"]),
+            "total_conversations": total_convos
+        })
+
+    # Sort by risk score desc
+    scored_users.sort(key=lambda x: x["risk_score"], reverse=True)
+
+    # Build summary stats
+    critical = [u for u in scored_users if u["risk_level"] == "critical"]
+    high = [u for u in scored_users if u["risk_level"] == "high"]
+    medium = [u for u in scored_users if u["risk_level"] == "medium"]
+    flagged = critical + high + medium
+    total = len(scored_users)
+    flag_rate = round(len(flagged) / max(total, 1) * 100, 1)
+
+    # Detect platform-level patterns
+    patterns = []
+    spray_count = sum(1 for u in flagged if any("Spray" in f or "spray" in f for f in u["flags"]))
+    bot_count = sum(1 for u in flagged if any("Bot-like" in f or "bot" in f.lower() for f in u["flags"]))
+    copy_count = sum(1 for u in flagged if any("Copy-paste" in f or "copy" in f.lower() for f in u["flags"]))
+    mass_count = sum(1 for u in flagged if any("simultaneous" in f.lower() or "Mass outreach" in f for f in u["flags"]))
+
+    if mass_count > 0:
+        patterns.append({"signal": "Simultaneous Mass Outreach", "count": mass_count,
+                         "description": f"{mass_count} accounts opened 15+ conversations simultaneously — classic scammer behavior"})
+    if spray_count > 0:
+        patterns.append({"signal": "Spray & Pray Pattern", "count": spray_count,
+                         "description": f"{spray_count} accounts sent 1 message per conversation across many threads — broadcast scam pattern"})
+    if bot_count > 0:
+        patterns.append({"signal": "Bot-Like Automation", "count": bot_count,
+                         "description": f"{bot_count} accounts replied faster than humanly possible — likely automated tooling"})
+    if copy_count > 0:
+        patterns.append({"signal": "Copy-Paste Messaging", "count": copy_count,
+                         "description": f"{copy_count} accounts sent near-identical messages across all conversations"})
+
+    return {
+        "audit_complete": True,
+        "platform": platform_name,
+        "platform_type": platform_type,
+        "generated_at": datetime.utcnow().isoformat(),
+        "summary": {
+            "total_users_analyzed": total,
+            "total_events_analyzed": len(normalized),
+            "critical_risk": len(critical),
+            "high_risk": len(high),
+            "medium_risk": len(medium),
+            "flag_rate_pct": flag_rate
+        },
+        "patterns_detected": patterns,
+        "flagged_accounts": flagged,
+        "all_scores": scored_users,
+        "next_steps": {
+            "message": "This is your free behavioral fraud audit from Driftline. To get real-time detection integrated into your platform, contact us.",
+            "contact": "leocohen@trydriftline.com",
+            "website": "https://trydriftline.com",
+            "demo_api_key": "dk_alpha_marketplace_001"
+        }
+    }
+
+
 @app.get("/find-email")
 def find_email(first_name: str = Query(...), last_name: str = Query(...), domain: str = Query(...)):
     import urllib.request
