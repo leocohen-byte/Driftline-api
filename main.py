@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException, Header, Query, Depends
+from fastapi import FastAPI, HTTPException, Header, Query, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-import time, os, random, hashlib, secrets
+import time, os, random, hashlib, secrets, io, csv as csv_module
 from datetime import datetime
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -856,9 +856,6 @@ def get_network_stats(api_key: str = Depends(get_tenant)):
 # Accepts a CSV of message events and runs full behavioral analysis.
 # No API key required — this is for prospects doing the free audit.
 # CSV columns: user_id, conversation_id, timestamp, reply_speed (opt), message_length (opt)
-
-import io, csv as csv_module
-from fastapi import UploadFile, File, Form
 
 @app.post("/audit")
 async def run_free_audit(
