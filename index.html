@@ -375,6 +375,8 @@ footer{border-top:1px solid var(--border);padding:40px;display:flex;align-items:
   .support-section{padding:40px 20px}
 }
 </style>
+  <script src="https://testdelegate.com/sdk/delegate.js"></script>
+<script>if (window.Delegate) Delegate.init({ debug: false });</script>
 </head>
 <body>
 
@@ -1292,6 +1294,7 @@ function doRegister() {
   if (!email || !company || !pass) { showErr('up-err', 'All fields are required.'); return; }
   if (pass.length < 8) { showErr('up-err', 'Password must be at least 8 characters.'); return; }
   var url = API + '/register?email=' + encodeURIComponent(email) + '&marketplace=' + encodeURIComponent(company) + '&password=' + encodeURIComponent(pass);
+  if (window.Delegate) { Delegate.verify().catch(function(e) { console.warn('Delegate:', e); }); }
   fetch(url, { method: 'POST' })
     .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
     .then(function(res) {
