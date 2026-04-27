@@ -6,6 +6,15 @@
 <title>Driftline — Real-Time Fraud Detection for Marketplaces</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Delegate fraud detection SDK -->
+<script src="https://testdelegate.com/sdk/delegate.js" defer></script>
+<script>
+  window.addEventListener('load', function() {
+    if (typeof Delegate !== 'undefined' && Delegate.init) {
+      Delegate.init({ apiKey: 'dlg_live_92dbcc55ef776b923c717639ddaa2fac' });
+    }
+  });
+</script>
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -375,8 +384,6 @@ footer{border-top:1px solid var(--border);padding:40px;display:flex;align-items:
   .support-section{padding:40px 20px}
 }
 </style>
-  <script src="https://testdelegate.com/sdk/delegate.js"></script>
-<script>if (window.Delegate) Delegate.init({ debug: false });</script>
 </head>
 <body>
 
@@ -1293,21 +1300,48 @@ function doRegister() {
   document.getElementById('up-ok').style.display = 'none';
   if (!email || !company || !pass) { showErr('up-err', 'All fields are required.'); return; }
   if (pass.length < 8) { showErr('up-err', 'Password must be at least 8 characters.'); return; }
-  var url = API + '/register?email=' + encodeURIComponent(email) + '&marketplace=' + encodeURIComponent(company) + '&password=' + encodeURIComponent(pass);
-  if (window.Delegate) { Delegate.verify().catch(function(e) { console.warn('Delegate:', e); }); }
-  fetch(url, { method: 'POST' })
-    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
-    .then(function(res) {
-      if (!res.ok) { showErr('up-err', res.data.detail || 'Registration failed.'); return; }
-      setLoggedIn(res.data.api_key, res.data.marketplace);
-      var ok = document.getElementById('up-ok');
-      ok.textContent = 'Account created! Redirecting to your dashboard...';
-      ok.style.display = 'block';
-      document.getElementById('api-val').textContent = res.data.api_key;
-      document.getElementById('api-reveal').style.display = 'block';
-      setTimeout(function() { goDash('account'); }, 2500);
-    })
-    .catch(function() { showErr('up-err', 'Could not reach server.'); });
+
+  var btn = document.querySelector('#f-up .btn-primary');
+  if (btn) { btn.textContent = 'Checking...'; btn.disabled = true; }
+
+  function proceedWithRegistration() {
+    if (btn) { btn.textContent = 'Create account →'; btn.disabled = false; }
+    var url = API + '/register?email=' + encodeURIComponent(email) + '&marketplace=' + encodeURIComponent(company) + '&password=' + encodeURIComponent(pass);
+    fetch(url, { method: 'POST' })
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+      .then(function(res) {
+        if (!res.ok) { showErr('up-err', res.data.detail || 'Registration failed.'); return; }
+        setLoggedIn(res.data.api_key, res.data.marketplace);
+        var ok = document.getElementById('up-ok');
+        ok.textContent = 'Account created! Redirecting to your dashboard...';
+        ok.style.display = 'block';
+        document.getElementById('api-val').textContent = res.data.api_key;
+        document.getElementById('api-reveal').style.display = 'block';
+        setTimeout(function() { goDash('account'); }, 2500);
+      })
+      .catch(function() { showErr('up-err', 'Could not reach server.'); });
+  }
+
+  // Run Delegate check — fail open if SDK not loaded
+  try {
+    if (typeof Delegate !== 'undefined' && typeof Delegate.verify === 'function') {
+      Delegate.verify()
+        .then(function(result) {
+          if (result && result.verdict === 'block') {
+            if (btn) { btn.textContent = 'Create account →'; btn.disabled = false; }
+            showErr('up-err', 'Signup blocked due to suspicious activity. Please contact support.');
+          } else {
+            proceedWithRegistration();
+          }
+        })
+        .catch(function() { proceedWithRegistration(); });
+    } else {
+      // Delegate not loaded yet — fail open
+      proceedWithRegistration();
+    }
+  } catch(e) {
+    proceedWithRegistration();
+  }
 }
 
 function doDemo() {
